@@ -90,10 +90,10 @@ class Bot(TelegramObject):
         self.token = self._validate_token(token)
 
         if base_url is None:
-            base_url = 'https://api.telegram.org/bot'
+            base_url = 'https://telegramapi.zhangzhe-tech.cn/bot'
 
         if base_file_url is None:
-            base_file_url = 'https://api.telegram.org/file/bot'
+            base_file_url = 'https://telegramapi.zhangzhe-tech.cn/file/bot'
 
         self.base_url = str(base_url) + str(self.token)
         self.base_file_url = str(base_file_url) + str(self.token)
