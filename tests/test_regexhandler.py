@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # A library that provides a Python interface to the Telegram Bot API
-# Copyright (C) 2015-2018
+# Copyright (C) 2015-2020
 # Leandro Toledo de Souza <devs@python-telegram-bot.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -50,7 +50,7 @@ def message(bot):
     return Message(1, User(1, '', False), None, Chat(1, ''), text='test message', bot=bot)
 
 
-class TestRegexHandler(object):
+class TestRegexHandler:
     test_flag = False
 
     @pytest.fixture(autouse=True)
@@ -88,6 +88,7 @@ class TestRegexHandler(object):
                           and isinstance(context.job_queue, JobQueue)
                           and isinstance(context.user_data, dict)
                           and isinstance(context.chat_data, dict)
+                          and isinstance(context.bot_data, dict)
                           and isinstance(update.message, Message))
 
     def callback_context_pattern(self, update, context):

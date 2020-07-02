@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # A library that provides a Python interface to the Telegram Bot API
-# Copyright (C) 2015-2018
+# Copyright (C) 2015-2020
 # Leandro Toledo de Souza <devs@python-telegram-bot.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -41,7 +41,7 @@ class InlineKeyboardMarkup(ReplyMarkup):
         self.inline_keyboard = inline_keyboard
 
     def to_dict(self):
-        data = super(InlineKeyboardMarkup, self).to_dict()
+        data = super().to_dict()
 
         data['inline_keyboard'] = []
         for inline_keyboard in self.inline_keyboard:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # A library that provides a Python interface to the Telegram Bot API
-# Copyright (C) 2015-2018
+# Copyright (C) 2015-2020
 # Leandro Toledo de Souza <devs@python-telegram-bot.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -58,7 +58,7 @@ class PassportData(TelegramObject):
         if not data:
             return None
 
-        data = super(PassportData, cls).de_json(data, bot)
+        data = super().de_json(data, bot)
 
         data['data'] = EncryptedPassportElement.de_list(data.get('data'), bot)
         data['credentials'] = EncryptedCredentials.de_json(data.get('credentials'), bot)
@@ -66,7 +66,7 @@ class PassportData(TelegramObject):
         return cls(bot=bot, **data)
 
     def to_dict(self):
-        data = super(PassportData, self).to_dict()
+        data = super().to_dict()
 
         data['data'] = [e.to_dict() for e in self.data]
 

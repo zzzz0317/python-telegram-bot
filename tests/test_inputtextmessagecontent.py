@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # A library that provides a Python interface to the Telegram Bot API
-# Copyright (C) 2015-2018
+# Copyright (C) 2015-2020
 # Leandro Toledo de Souza <devs@python-telegram-bot.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -30,7 +30,7 @@ def input_text_message_content():
         disable_web_page_preview=TestInputTextMessageContent.disable_web_page_preview)
 
 
-class TestInputTextMessageContent(object):
+class TestInputTextMessageContent:
     message_text = '*message text*'
     parse_mode = ParseMode.MARKDOWN
     disable_web_page_preview = True

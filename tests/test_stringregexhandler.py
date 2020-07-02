@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # A library that provides a Python interface to the Telegram Bot API
-# Copyright (C) 2015-2018
+# Copyright (C) 2015-2020
 # Leandro Toledo de Souza <devs@python-telegram-bot.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -49,7 +49,7 @@ def false_update(request):
     return Update(update_id=1, **request.param)
 
 
-class TestStringRegexHandler(object):
+class TestStringRegexHandler:
     test_flag = False
 
     @pytest.fixture(autouse=True)

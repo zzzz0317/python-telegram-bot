@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # A library that provides a Python interface to the Telegram Bot API
-# Copyright (C) 2015-2018
+# Copyright (C) 2015-2020
 # Leandro Toledo de Souza <devs@python-telegram-bot.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -29,8 +29,6 @@ from collections import defaultdict
 
 from queue import Queue, Empty
 
-from future.builtins import range
-
 from telegram import TelegramError, Update
 from telegram.ext.handler import Handler
 from telegram.ext.callbackcontext import CallbackContext
@@ -38,7 +36,6 @@ from telegram.utils.deprecate import TelegramDeprecationWarning
 from telegram.utils.promise import Promise
 from telegram.ext import BasePersistence
 
-logging.getLogger(__name__).addHandler(logging.NullHandler())
 DEFAULT_GROUP = 0
 
 
@@ -67,7 +64,7 @@ class DispatcherHandlerStop(Exception):
     pass
 
 
-class Dispatcher(object):
+class Dispatcher:
     """This class dispatches all kinds of updates to its registered handlers.
 
     Attributes:
@@ -79,6 +76,7 @@ class Dispatcher(object):
             decorator.
         user_data (:obj:`defaultdict`): A dictionary handlers can use to store data for the user.
         chat_data (:obj:`defaultdict`): A dictionary handlers can use to store data for the chat.
+        bot_data (:obj:`dict`): A dictionary handlers can use to store data for the bot.
         persistence (:class:`telegram.ext.BasePersistence`): Optional. The persistence class to
             store data that should be persistent over restarts
 
@@ -121,8 +119,8 @@ class Dispatcher(object):
                           TelegramDeprecationWarning, stacklevel=3)
 
         self.user_data = defaultdict(dict)
-        """:obj:`dict`: A dictionary handlers can use to store data for the user."""
         self.chat_data = defaultdict(dict)
+        self.bot_data = {}
         if persistence:
             if not isinstance(persistence, BasePersistence):
                 raise TypeError("persistence should be based on telegram.ext.BasePersistence")
@@ -135,10 +133,12 @@ class Dispatcher(object):
                 self.chat_data = self.persistence.get_chat_data()
                 if not isinstance(self.chat_data, defaultdict):
                     raise ValueError("chat_data must be of type defaultdict")
+            if self.persistence.store_bot_data:
+                self.bot_data = self.persistence.get_bot_data()
+                if not isinstance(self.bot_data, dict):
+                    raise ValueError("bot_data must be of type dict")
         else:
             self.persistence = None
-
-        self.job_queue = job_queue
 
         self.handlers = {}
         """Dict[:obj:`int`, List[:class:`telegram.ext.Handler`]]: Holds the handlers per group."""
@@ -161,6 +161,10 @@ class Dispatcher(object):
                 self._set_singleton(self)
             else:
                 self._set_singleton(None)
+
+    @property
+    def exception_event(self):
+        return self.__exception_event
 
     def _init_async_threads(self, base_name, workers):
         base_name = '{}_'.format(base_name) if base_name else ''
@@ -298,10 +302,10 @@ class Dispatcher(object):
             self.__async_queue.put(None)
 
         for i, thr in enumerate(threads):
-            self.logger.debug('Waiting for async thread {0}/{1} to end'.format(i + 1, total))
+            self.logger.debug('Waiting for async thread {}/{} to end'.format(i + 1, total))
             thr.join()
             self.__async_threads.remove(thr)
-            self.logger.debug('async thread {0}/{1} has ended'.format(i + 1, total))
+            self.logger.debug('async thread {}/{} has ended'.format(i + 1, total))
 
     @property
     def has_running_threads(self):
@@ -315,42 +319,6 @@ class Dispatcher(object):
                 The update to process.
 
         """
-
-        def persist_update(update):
-            """Persist a single update.
-
-            Args:
-            update (:class:`telegram.Update`):
-                The update to process.
-
-            """
-            if self.persistence and isinstance(update, Update):
-                if self.persistence.store_chat_data and update.effective_chat:
-                    chat_id = update.effective_chat.id
-                    try:
-                        self.persistence.update_chat_data(chat_id,
-                                                          self.chat_data[chat_id])
-                    except Exception as e:
-                        try:
-                            self.dispatch_error(update, e)
-                        except Exception:
-                            message = 'Saving chat data raised an error and an ' \
-                                      'uncaught error was raised while handling ' \
-                                      'the error with an error_handler'
-                            self.logger.exception(message)
-                if self.persistence.store_user_data and update.effective_user:
-                    user_id = update.effective_user.id
-                    try:
-                        self.persistence.update_user_data(user_id,
-                                                          self.user_data[user_id])
-                    except Exception as e:
-                        try:
-                            self.dispatch_error(update, e)
-                        except Exception:
-                            message = 'Saving user data raised an error and an ' \
-                                      'uncaught error was raised while handling ' \
-                                      'the error with an error_handler'
-                            self.logger.exception(message)
 
         # An error happened while polling
         if isinstance(update, TelegramError):
@@ -370,13 +338,13 @@ class Dispatcher(object):
                         if not context and self.use_context:
                             context = CallbackContext.from_update(update, self)
                         handler.handle_update(update, self, check, context)
-                        persist_update(update)
+                        self.update_persistence(update=update)
                         break
 
             # Stop processing with any other handler.
             except DispatcherHandlerStop:
                 self.logger.debug('Stopping further handlers due to DispatcherHandlerStop')
-                persist_update(update)
+                self.update_persistence(update=update)
                 break
 
             # Dispatch any error.
@@ -395,7 +363,8 @@ class Dispatcher(object):
     def add_handler(self, handler, group=DEFAULT_GROUP):
         """Register a handler.
 
-        TL;DR: Order and priority counts. 0 or 1 handlers per group will be used.
+        TL;DR: Order and priority counts. 0 or 1 handlers per group will be used. End handling of
+        update with :class:`telegram.ext.DispatcherHandlerStop`.
 
         A handler must be an instance of a subclass of :class:`telegram.ext.Handler`. All handlers
         are organized in groups with a numeric value. The default group is 0. All groups will be
@@ -420,7 +389,7 @@ class Dispatcher(object):
         from .conversationhandler import ConversationHandler
 
         if not isinstance(handler, Handler):
-            raise TypeError('handler is not an instance of {0}'.format(Handler.__name__))
+            raise TypeError('handler is not an instance of {}'.format(Handler.__name__))
         if not isinstance(group, int):
             raise TypeError('group is not int')
         if isinstance(handler, ConversationHandler) and handler.persistent:
@@ -428,8 +397,8 @@ class Dispatcher(object):
                 raise ValueError(
                     "Conversationhandler {} can not be persistent if dispatcher has no "
                     "persistence".format(handler.name))
-            handler.conversations = self.persistence.get_conversations(handler.name)
             handler.persistence = self.persistence
+            handler.conversations = self.persistence.get_conversations(handler.name)
 
         if group not in self.handlers:
             self.handlers[group] = list()
@@ -452,16 +421,62 @@ class Dispatcher(object):
                 del self.handlers[group]
                 self.groups.remove(group)
 
-    def update_persistence(self):
-        """Update :attr:`user_data` and :attr:`chat_data` in :attr:`persistence`.
+    def update_persistence(self, update=None):
+        """Update :attr:`user_data`, :attr:`chat_data` and :attr:`bot_data` in :attr:`persistence`.
+
+        Args:
+            update (:class:`telegram.Update`, optional): The update to process. If passed, only the
+            corresponding ``user_data`` and ``chat_data`` will be updated.
         """
         if self.persistence:
+            chat_ids = self.chat_data.keys()
+            user_ids = self.user_data.keys()
+
+            if isinstance(update, Update):
+                if update.effective_chat:
+                    chat_ids = [update.effective_chat.id]
+                else:
+                    chat_ids = []
+                if update.effective_user:
+                    user_ids = [update.effective_user.id]
+                else:
+                    user_ids = []
+
+            if self.persistence.store_bot_data:
+                try:
+                    self.persistence.update_bot_data(self.bot_data)
+                except Exception as e:
+                    try:
+                        self.dispatch_error(update, e)
+                    except Exception:
+                        message = 'Saving bot data raised an error and an ' \
+                                  'uncaught error was raised while handling ' \
+                                  'the error with an error_handler'
+                        self.logger.exception(message)
             if self.persistence.store_chat_data:
-                for chat_id in self.chat_data:
-                    self.persistence.update_chat_data(chat_id, self.chat_data[chat_id])
+                for chat_id in chat_ids:
+                    try:
+                        self.persistence.update_chat_data(chat_id, self.chat_data[chat_id])
+                    except Exception as e:
+                        try:
+                            self.dispatch_error(update, e)
+                        except Exception:
+                            message = 'Saving chat data raised an error and an ' \
+                                      'uncaught error was raised while handling ' \
+                                      'the error with an error_handler'
+                            self.logger.exception(message)
             if self.persistence.store_user_data:
-                for user_id in self.user_data:
-                    self.persistence.update_user_data(user_id, self.user_data[user_id])
+                for user_id in user_ids:
+                    try:
+                        self.persistence.update_user_data(user_id, self.user_data[user_id])
+                    except Exception as e:
+                        try:
+                            self.dispatch_error(update, e)
+                        except Exception:
+                            message = 'Saving user data raised an error and an ' \
+                                      'uncaught error was raised while handling ' \
+                                      'the error with an error_handler'
+                            self.logger.exception(message)
 
     def add_error_handler(self, callback):
         """Registers an error handler in the Dispatcher. This handler will receive every error

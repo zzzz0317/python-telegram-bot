@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # A library that provides a Python interface to the Telegram Bot API
-# Copyright (C) 2015-2018
+# Copyright (C) 2015-2020
 # Leandro Toledo de Souza <devs@python-telegram-bot.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,6 @@
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 import datetime
 import os
-import sys
 import re
 from collections import defaultdict
 from queue import Queue
@@ -27,15 +26,17 @@ from time import sleep
 
 import pytest
 
-from telegram import Bot, Message, User, Chat, MessageEntity, Update, \
-    InlineQuery, CallbackQuery, ShippingQuery, PreCheckoutQuery, ChosenInlineResult
-from telegram.ext import Dispatcher, JobQueue, Updater, BaseFilter
+from telegram import (Bot, Message, User, Chat, MessageEntity, Update,
+                      InlineQuery, CallbackQuery, ShippingQuery, PreCheckoutQuery,
+                      ChosenInlineResult)
+from telegram.ext import Dispatcher, JobQueue, Updater, BaseFilter, Defaults
+from telegram.error import BadRequest
 from tests.bots import get_bot
 
-TRAVIS = os.getenv('TRAVIS', False)
+GITHUB_ACTION = os.getenv('GITHUB_ACTION', False)
 
-if TRAVIS:
-    pytest_plugins = ['tests.travis_fold']
+if GITHUB_ACTION:
+    pytest_plugins = ['tests.plugin_github_group']
 
 # THIS KEY IS OBVIOUSLY COMPROMISED
 # DO NOT USE IN PRODUCTION!
@@ -50,6 +51,21 @@ def bot_info():
 @pytest.fixture(scope='session')
 def bot(bot_info):
     return make_bot(bot_info)
+
+
+DEFAULT_BOTS = {}
+@pytest.fixture(scope='function')
+def default_bot(request, bot_info):
+    param = request.param if hasattr(request, 'param') else {}
+
+    defaults = Defaults(**param)
+    default_bot = DEFAULT_BOTS.get(defaults)
+    if default_bot:
+        return default_bot
+    else:
+        default_bot = make_bot(bot_info, **{'defaults': defaults})
+        DEFAULT_BOTS[defaults] = default_bot
+        return default_bot
 
 
 @pytest.fixture(scope='session')
@@ -100,6 +116,7 @@ def dp(_dp):
         _dp.update_queue.get(False)
     _dp.chat_data = defaultdict(dict)
     _dp.user_data = defaultdict(dict)
+    _dp.bot_data = {}
     _dp.persistence = None
     _dp.handlers = {}
     _dp.groups = []
@@ -146,13 +163,12 @@ def class_thumb_file():
 
 
 def pytest_configure(config):
-    if sys.version_info >= (3,):
-        config.addinivalue_line('filterwarnings', 'ignore::ResourceWarning')
-        # TODO: Write so good code that we don't need to ignore ResourceWarnings anymore
+    config.addinivalue_line('filterwarnings', 'ignore::ResourceWarning')
+    # TODO: Write so good code that we don't need to ignore ResourceWarnings anymore
 
 
-def make_bot(bot_info):
-    return Bot(bot_info['token'], private_key=PRIVATE_KEY)
+def make_bot(bot_info, **kwargs):
+    return Bot(bot_info['token'], private_key=PRIVATE_KEY, **kwargs)
 
 
 CMD_PATTERN = re.compile(r'/[\da-z_]{1,32}(?:@\w{1,32})?')
@@ -253,3 +269,36 @@ def get_false_update_fixture_decorator_params():
 @pytest.fixture(scope='function', **get_false_update_fixture_decorator_params())
 def false_update(request):
     return Update(update_id=1, **request.param)
+
+
+@pytest.fixture(params=[1, 2], ids=lambda h: 'UTC +{hour:0>2}:00'.format(hour=h))
+def utc_offset(request):
+    return datetime.timedelta(hours=request.param)
+
+
+@pytest.fixture()
+def timezone(utc_offset):
+    return datetime.timezone(utc_offset)
+
+
+def expect_bad_request(func, message, reason):
+    """
+    Wrapper for testing bot functions expected to result in an :class:`telegram.error.BadRequest`.
+    Makes it XFAIL, if the specified error message is present.
+
+    Args:
+        func: The callable to be executed.
+        message: The expected message of the bad request error. If another message is present,
+            the error will be reraised.
+        reason: Explanation for the XFAIL.
+
+    Returns:
+        On success, returns the return value of :attr:`func`
+    """
+    try:
+        return func()
+    except BadRequest as e:
+        if message in str(e):
+            pytest.xfail('{}. {}'.format(reason, e))
+        else:
+            raise e

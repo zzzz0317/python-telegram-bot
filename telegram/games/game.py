@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # A library that provides a Python interface to the Telegram Bot API
-# Copyright (C) 2015-2018
+# Copyright (C) 2015-2020
 # Leandro Toledo de Souza <devs@python-telegram-bot.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -77,7 +77,7 @@ class Game(TelegramObject):
         if not data:
             return None
 
-        data = super(Game, cls).de_json(data, bot)
+        data = super().de_json(data, bot)
 
         data['photo'] = PhotoSize.de_list(data.get('photo'), bot)
         data['text_entities'] = MessageEntity.de_list(data.get('text_entities'), bot)
@@ -86,7 +86,7 @@ class Game(TelegramObject):
         return cls(**data)
 
     def to_dict(self):
-        data = super(Game, self).to_dict()
+        data = super().to_dict()
 
         data['photo'] = [p.to_dict() for p in self.photo]
         if self.text_entities:

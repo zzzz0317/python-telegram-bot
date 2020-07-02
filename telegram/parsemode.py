@@ -2,7 +2,7 @@
 # pylint: disable=R0903
 #
 # A library that provides a Python interface to the Telegram Bot API
-# Copyright (C) 2015-2018
+# Copyright (C) 2015-2020
 # Leandro Toledo de Souza <devs@python-telegram-bot.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -20,10 +20,12 @@
 """This module contains an object that represents a Telegram Message Parse Modes."""
 
 
-class ParseMode(object):
+class ParseMode:
     """This object represents a Telegram Message Parse Modes."""
 
     MARKDOWN = 'Markdown'
     """:obj:`str`: 'Markdown'"""
+    MARKDOWN_V2 = 'MarkdownV2'
+    """:obj:`str`: 'MarkdownV2'"""
     HTML = 'HTML'
     """:obj:`str`: 'HTML'"""

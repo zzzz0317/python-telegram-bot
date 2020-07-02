@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # A library that provides a Python interface to the Telegram Bot API
-# Copyright (C) 2015-2018
+# Copyright (C) 2015-2020
 # Leandro Toledo de Souza <devs@python-telegram-bot.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -72,22 +72,15 @@ class InlineQueryResultArticle(InlineQueryResult):
                  **kwargs):
 
         # Required
-        super(InlineQueryResultArticle, self).__init__('article', id)
+        super().__init__('article', id)
         self.title = title
         self.input_message_content = input_message_content
 
         # Optional
-        if reply_markup:
-            self.reply_markup = reply_markup
-        if url:
-            self.url = url
-        if hide_url:
-            self.hide_url = hide_url
-        if description:
-            self.description = description
-        if thumb_url:
-            self.thumb_url = thumb_url
-        if thumb_width:
-            self.thumb_width = thumb_width
-        if thumb_height:
-            self.thumb_height = thumb_height
+        self.reply_markup = reply_markup
+        self.url = url
+        self.hide_url = hide_url
+        self.description = description
+        self.thumb_url = thumb_url
+        self.thumb_width = thumb_width
+        self.thumb_height = thumb_height

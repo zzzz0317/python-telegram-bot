@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # A library that provides a Python interface to the Telegram Bot API
-# Copyright (C) 2015-2018
+# Copyright (C) 2015-2020
 # Leandro Toledo de Souza <devs@python-telegram-bot.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -25,7 +25,7 @@ from io import BytesIO
 from telegram import InputFile
 
 
-class TestInputFile(object):
+class TestInputFile:
     png = os.path.join('tests', 'data', 'game.png')
 
     def test_subprocess_pipe(self):
@@ -76,7 +76,7 @@ class TestInputFile(object):
         assert InputFile(open('tests/data/telegram', 'rb'),
                          filename='blah.jpg').filename == 'blah.jpg'
 
-        class MockedFileobject(object):
+        class MockedFileobject:
             # A open(?, 'rb') without a .name
             def __init__(self, f):
                 self.f = open(f, 'rb')

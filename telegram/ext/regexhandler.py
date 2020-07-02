@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # A library that provides a Python interface to the Telegram Bot API
-# Copyright (C) 2015-2018
+# Copyright (C) 2015-2020
 # Leandro Toledo de Souza <devs@python-telegram-bot.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -110,21 +110,20 @@ class RegexHandler(MessageHandler):
         warnings.warn('RegexHandler is deprecated. See https://git.io/fxJuV for more info',
                       TelegramDeprecationWarning,
                       stacklevel=2)
-        super(RegexHandler, self).__init__(Filters.regex(pattern),
-                                           callback,
-                                           pass_update_queue=pass_update_queue,
-                                           pass_job_queue=pass_job_queue,
-                                           pass_user_data=pass_user_data,
-                                           pass_chat_data=pass_chat_data,
-                                           message_updates=message_updates,
-                                           channel_post_updates=channel_post_updates,
-                                           edited_updates=edited_updates)
+        super().__init__(Filters.regex(pattern),
+                         callback,
+                         pass_update_queue=pass_update_queue,
+                         pass_job_queue=pass_job_queue,
+                         pass_user_data=pass_user_data,
+                         pass_chat_data=pass_chat_data,
+                         message_updates=message_updates,
+                         channel_post_updates=channel_post_updates,
+                         edited_updates=edited_updates)
         self.pass_groups = pass_groups
         self.pass_groupdict = pass_groupdict
 
     def collect_optional_args(self, dispatcher, update=None, check_result=None):
-        optional_args = super(RegexHandler, self).collect_optional_args(dispatcher, update,
-                                                                        check_result)
+        optional_args = super().collect_optional_args(dispatcher, update, check_result)
         if self.pass_groups:
             optional_args['groups'] = check_result['matches'][0].groups()
         if self.pass_groupdict:

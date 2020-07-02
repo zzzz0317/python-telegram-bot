@@ -21,7 +21,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 
-def msg(bot, update):
+def msg(update, context):
     # If we received any passport data
     passport_data = update.message.passport_data
     if passport_data:
@@ -77,11 +77,6 @@ def msg(bot, update):
                     actual_file.download()
 
 
-def error(bot, update, error):
-    """Log Errors caused by Updates."""
-    logger.warning('Update "%s" caused error "%s"', update, error)
-
-
 def main():
     """Start the bot."""
     # Create the Updater and pass it your token and private key
@@ -92,9 +87,6 @@ def main():
 
     # On messages that include passport data call msg
     dp.add_handler(MessageHandler(Filters.passport_data, msg))
-
-    # log all errors
-    dp.add_error_handler(error)
 
     # Start the Bot
     updater.start_polling()

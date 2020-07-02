@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # A library that provides a Python interface to the Telegram Bot API
-# Copyright (C) 2015-2018
+# Copyright (C) 2015-2020
 # Leandro Toledo de Souza <devs@python-telegram-bot.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -29,7 +29,7 @@ def input_location_message_content():
                                        live_period=TestInputLocationMessageContent.live_period)
 
 
-class TestInputLocationMessageContent(object):
+class TestInputLocationMessageContent:
     latitude = -23.691288
     longitude = -46.788279
     live_period = 80

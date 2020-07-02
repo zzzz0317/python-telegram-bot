@@ -66,6 +66,7 @@ def start(update, context):
 
     # If we're starting over we don't need do send a new message
     if context.user_data.get(START_OVER):
+        update.callback_query.answer()
         update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     else:
         update.message.reply_text('Hi, I\'m FamiliyBot and here to help you gather information'
@@ -83,6 +84,7 @@ def adding_self(update, context):
     button = InlineKeyboardButton(text='Add info', callback_data=str(MALE))
     keyboard = InlineKeyboardMarkup.from_button(button)
 
+    update.callback_query.answer()
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
 
     return DESCRIBING_SELF
@@ -98,14 +100,14 @@ def show_data(update, context):
         text = ''
         if level == SELF:
             for person in user_data[level]:
-                text += '\nName: {0}, Age: {1}'.format(person.get(NAME, '-'), person.get(AGE, '-'))
+                text += '\nName: {}, Age: {}'.format(person.get(NAME, '-'), person.get(AGE, '-'))
         else:
             male, female = _name_switcher(level)
 
             for person in user_data[level]:
                 gender = female if person[GENDER] == FEMALE else male
-                text += '\n{0}: Name: {1}, Age: {2}'.format(gender, person.get(NAME, '-'),
-                                                            person.get(AGE, '-'))
+                text += '\n{}: Name: {}, Age: {}'.format(gender, person.get(NAME, '-'),
+                                                         person.get(AGE, '-'))
         return text
 
     ud = context.user_data
@@ -118,6 +120,7 @@ def show_data(update, context):
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
 
+    update.callback_query.answer()
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     ud[START_OVER] = True
 
@@ -133,6 +136,8 @@ def stop(update, context):
 
 def end(update, context):
     """End conversation from InlineKeyboardButton."""
+    update.callback_query.answer()
+
     text = 'See you around!'
     update.callback_query.edit_message_text(text=text)
 
@@ -151,6 +156,8 @@ def select_level(update, context):
         InlineKeyboardButton(text='Back', callback_data=str(END))
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
+
+    update.callback_query.answer()
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
 
     return SELECTING_LEVEL
@@ -172,8 +179,9 @@ def select_gender(update, context):
         InlineKeyboardButton(text='Show data', callback_data=str(SHOWING)),
         InlineKeyboardButton(text='Back', callback_data=str(END))
     ]]
-
     keyboard = InlineKeyboardMarkup(buttons)
+
+    update.callback_query.answer()
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
 
     return SELECTING_GENDER
@@ -201,6 +209,8 @@ def select_feature(update, context):
     if not context.user_data.get(START_OVER):
         context.user_data[FEATURES] = {GENDER: update.callback_query.data}
         text = 'Please select a feature to update.'
+
+        update.callback_query.answer()
         update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     # But after we do that, we need to send a new message
     else:
@@ -215,6 +225,8 @@ def ask_for_input(update, context):
     """Prompt user to input data for selected feature."""
     context.user_data[CURRENT_FEATURE] = update.callback_query.data
     text = 'Okay, tell me.'
+
+    update.callback_query.answer()
     update.callback_query.edit_message_text(text=text)
 
     return TYPING
@@ -253,12 +265,6 @@ def stop_nested(update, context):
     update.message.reply_text('Okay, bye.')
 
     return STOPPING
-
-
-# Error handler
-def error(update, context):
-    """Log Errors caused by Updates."""
-    logger.warning('Update "%s" caused error "%s"', update, context.error)
 
 
 def main():
@@ -301,8 +307,8 @@ def main():
 
         states={
             SELECTING_LEVEL: [CallbackQueryHandler(select_gender,
-                                                   pattern='^{0}$|^{1}$'.format(str(PARENTS),
-                                                                                str(CHILDREN)))],
+                                                   pattern='^{}$|^{}$'.format(str(PARENTS),
+                                                                              str(CHILDREN)))],
             SELECTING_GENDER: [description_conv]
         },
 
@@ -323,31 +329,29 @@ def main():
     )
 
     # Set up top level ConversationHandler (selecting action)
+    # Because the states of the third level conversation map to the ones of the econd level
+    # conversation, we need to make sure the top level conversation can also handle them
+    selection_handlers = [
+        add_member_conv,
+        CallbackQueryHandler(show_data, pattern='^' + str(SHOWING) + '$'),
+        CallbackQueryHandler(adding_self, pattern='^' + str(ADDING_SELF) + '$'),
+        CallbackQueryHandler(end, pattern='^' + str(END) + '$'),
+    ]
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
 
         states={
             SHOWING: [CallbackQueryHandler(start, pattern='^' + str(END) + '$')],
-            SELECTING_ACTION: [
-                add_member_conv,
-                CallbackQueryHandler(show_data, pattern='^' + str(SHOWING) + '$'),
-                CallbackQueryHandler(adding_self, pattern='^' + str(ADDING_SELF) + '$'),
-                CallbackQueryHandler(end, pattern='^' + str(END) + '$'),
-            ],
+            SELECTING_ACTION: selection_handlers,
+            SELECTING_LEVEL: selection_handlers,
             DESCRIBING_SELF: [description_conv],
+            STOPPING: [CommandHandler('start', start)],
         },
 
         fallbacks=[CommandHandler('stop', stop)],
     )
-    # Because the states of the third level conversation map to the ones of the
-    # second level conversation, we need to be a bit hacky about that:
-    conv_handler.states[SELECTING_LEVEL] = conv_handler.states[SELECTING_ACTION]
-    conv_handler.states[STOPPING] = conv_handler.entry_points
 
     dp.add_handler(conv_handler)
-
-    # log all errors
-    dp.add_error_handler(error)
 
     # Start the Bot
     updater.start_polling()

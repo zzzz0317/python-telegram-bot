@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # A library that provides a Python interface to the Telegram Bot API
-# Copyright (C) 2015-2018
+# Copyright (C) 2015-2020
 # Leandro Toledo de Souza <devs@python-telegram-bot.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -23,13 +23,10 @@ try:
 except ImportError:
     import json
 
-from abc import ABCMeta
 
-
-class TelegramObject(object):
+class TelegramObject:
     """Base class for most telegram objects."""
 
-    __metaclass__ = ABCMeta
     _id_attrs = ()
 
     def __str__(self):
@@ -60,12 +57,7 @@ class TelegramObject(object):
         data = dict()
 
         for key in iter(self.__dict__):
-            if key in ('bot',
-                       '_id_attrs',
-                       '_credentials',
-                       '_decrypted_credentials',
-                       '_decrypted_data',
-                       '_decrypted_secret'):
+            if key == 'bot' or key.startswith('_'):
                 continue
 
             value = self.__dict__[key]
@@ -82,9 +74,9 @@ class TelegramObject(object):
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self._id_attrs == other._id_attrs
-        return super(TelegramObject, self).__eq__(other)  # pylint: disable=no-member
+        return super().__eq__(other)  # pylint: disable=no-member
 
     def __hash__(self):
         if self._id_attrs:
             return hash((self.__class__, self._id_attrs))  # pylint: disable=no-member
-        return super(TelegramObject, self).__hash__()
+        return super().__hash__()

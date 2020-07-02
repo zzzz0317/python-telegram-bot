@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # A library that provides a Python interface to the Telegram Bot API
-# Copyright (C) 2015-2018
+# Copyright (C) 2015-2020
 # Leandro Toledo de Souza <devs@python-telegram-bot.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -19,8 +19,6 @@
 """This module contains the CommandHandler and PrefixHandler classes."""
 import re
 import warnings
-
-from future.utils import string_types
 
 from telegram.ext import Filters
 from telegram.utils.deprecate import TelegramDeprecationWarning
@@ -125,14 +123,14 @@ class CommandHandler(Handler):
                  pass_job_queue=False,
                  pass_user_data=False,
                  pass_chat_data=False):
-        super(CommandHandler, self).__init__(
+        super().__init__(
             callback,
             pass_update_queue=pass_update_queue,
             pass_job_queue=pass_job_queue,
             pass_user_data=pass_user_data,
             pass_chat_data=pass_chat_data)
 
-        if isinstance(command, string_types):
+        if isinstance(command, str):
             self.command = [command.lower()]
         else:
             self.command = [x.lower() for x in command]
@@ -184,7 +182,7 @@ class CommandHandler(Handler):
                     return False
 
     def collect_optional_args(self, dispatcher, update=None, check_result=None):
-        optional_args = super(CommandHandler, self).collect_optional_args(dispatcher, update)
+        optional_args = super().collect_optional_args(dispatcher, update)
         if self.pass_args:
             optional_args['args'] = check_result[0]
         return optional_args
@@ -302,22 +300,47 @@ class PrefixHandler(CommandHandler):
                  pass_user_data=False,
                  pass_chat_data=False):
 
-        super(PrefixHandler, self).__init__(
+        self._prefix = list()
+        self._command = list()
+        self._commands = list()
+
+        super().__init__(
             'nocommand', callback, filters=filters, allow_edited=None, pass_args=pass_args,
             pass_update_queue=pass_update_queue,
             pass_job_queue=pass_job_queue,
             pass_user_data=pass_user_data,
             pass_chat_data=pass_chat_data)
 
-        if isinstance(prefix, string_types):
-            self.prefix = [prefix.lower()]
+        self.prefix = prefix
+        self.command = command
+        self._build_commands()
+
+    @property
+    def prefix(self):
+        return self._prefix
+
+    @prefix.setter
+    def prefix(self, prefix):
+        if isinstance(prefix, str):
+            self._prefix = [prefix.lower()]
         else:
-            self.prefix = prefix
-        if isinstance(command, string_types):
-            self.command = [command.lower()]
+            self._prefix = prefix
+        self._build_commands()
+
+    @property
+    def command(self):
+        return self._command
+
+    @command.setter
+    def command(self, command):
+        if isinstance(command, str):
+            self._command = [command.lower()]
         else:
-            self.command = command
-        self.command = [x.lower() + y.lower() for x in self.prefix for y in self.command]
+            self._command = command
+        self._build_commands()
+
+    def _build_commands(self):
+        self._commands = [x.lower() + y.lower() for x in self.prefix for y in self.command]
 
     def check_update(self, update):
         """Determines whether an update should be passed to this handlers :attr:`callback`.
@@ -334,7 +357,7 @@ class PrefixHandler(CommandHandler):
 
             if message.text:
                 text_list = message.text.split()
-                if text_list[0].lower() not in self.command:
+                if text_list[0].lower() not in self._commands:
                     return None
                 filter_result = self.filters(update)
                 if filter_result:

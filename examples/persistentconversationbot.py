@@ -47,7 +47,7 @@ def start(update, context):
     reply_text = "Hi! My name is Doctor Botter."
     if context.user_data:
         reply_text += " You already told me your {}. Why don't you tell me something more " \
-                      "about yourself? Or change enything I " \
+                      "about yourself? Or change anything I " \
                       "already know.".format(", ".join(context.user_data.keys()))
     else:
         reply_text += " I will hold a more complex conversation with you. Why don't you tell me " \
@@ -107,11 +107,6 @@ def done(update, context):
     return ConversationHandler.END
 
 
-def error(update, context):
-    """Log Errors caused by Updates."""
-    logger.warning('Update "%s" caused error "%s"', update, context.error)
-
-
 def main():
     # Create the Updater and pass it your bot's token.
     pp = PicklePersistence(filename='conversationbot')
@@ -149,8 +144,6 @@ def main():
 
     show_data_handler = CommandHandler('show_data', show_data)
     dp.add_handler(show_data_handler)
-    # log all errors
-    dp.add_error_handler(error)
 
     # Start the Bot
     updater.start_polling()
