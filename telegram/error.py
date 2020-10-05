@@ -26,7 +26,7 @@ def _lstrip_str(in_s, lstr):
         lstr (:obj:`str`): substr to strip from left side
 
     Returns:
-        str:
+        :obj:`str`: The stripped string.
 
     """
     if in_s.startswith(lstr):
@@ -51,6 +51,9 @@ class TelegramError(Exception):
     def __str__(self):
         return '%s' % (self.message)
 
+    def __reduce__(self):
+        return self.__class__, (self.message,)
+
 
 class Unauthorized(TelegramError):
     pass
@@ -59,6 +62,9 @@ class Unauthorized(TelegramError):
 class InvalidToken(TelegramError):
     def __init__(self):
         super().__init__('Invalid token')
+
+    def __reduce__(self):
+        return self.__class__, ()
 
 
 class NetworkError(TelegramError):
@@ -73,11 +79,14 @@ class TimedOut(NetworkError):
     def __init__(self):
         super().__init__('Timed out')
 
+    def __reduce__(self):
+        return self.__class__, ()
+
 
 class ChatMigrated(TelegramError):
     """
     Args:
-        new_chat_id (:obj:`int`):
+        new_chat_id (:obj:`int`): The new chat id of the group.
 
     """
 
@@ -85,17 +94,23 @@ class ChatMigrated(TelegramError):
         super().__init__('Group migrated to supergroup. New chat id: {}'.format(new_chat_id))
         self.new_chat_id = new_chat_id
 
+    def __reduce__(self):
+        return self.__class__, (self.new_chat_id,)
+
 
 class RetryAfter(TelegramError):
     """
     Args:
-        retry_after (:obj:`int`):
+        retry_after (:obj:`int`): Time in seconds, after which the bot can retry the request.
 
     """
 
     def __init__(self, retry_after):
-        super().__init__('Flood control exceeded. Retry in {} seconds'.format(retry_after))
+        super().__init__('Flood control exceeded. Retry in {} seconds'.format(float(retry_after)))
         self.retry_after = float(retry_after)
+
+    def __reduce__(self):
+        return self.__class__, (self.retry_after,)
 
 
 class Conflict(TelegramError):
@@ -109,3 +124,6 @@ class Conflict(TelegramError):
 
     def __init__(self, msg):
         super().__init__(msg)
+
+    def __reduce__(self):
+        return self.__class__, (self.message,)

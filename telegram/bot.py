@@ -39,6 +39,7 @@ from telegram import (User, Message, Update, Chat, ChatMember, UserProfilePhotos
                       ReplyMarkup, TelegramObject, WebhookInfo, GameHighScore, StickerSet,
                       PhotoSize, Audio, Document, Sticker, Video, Animation, Voice, VideoNote,
                       Location, Venue, Contact, InputFile, Poll, BotCommand)
+from telegram.constants import MAX_INLINE_QUERY_RESULTS
 from telegram.error import InvalidToken, TelegramError
 from telegram.utils.helpers import to_timestamp, DEFAULT_NONE
 from telegram.utils.request import Request
@@ -373,7 +374,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -769,7 +770,7 @@ class Bot(TelegramObject):
             parse_mode (:obj:`str`, optional): Send Markdown or HTML, if you want Telegram apps to
                 show bold, italic, fixed-width text or inline URLs in the media caption. See the
                 constants in :class:`telegram.ParseMode` for the available modes.
-            supports_streaming (:obj:`bool`, optional): Pass True, if the uploaded video is
+            supports_streaming (:obj:`bool`, optional): Pass :obj:`True`, if the uploaded video is
                 suitable for streaming.
             disable_notification (:obj:`bool`, optional): Sends the message silently. Users will
                 receive a notification with no sound.
@@ -1214,7 +1215,7 @@ class Bot(TelegramObject):
 
         Returns:
             :class:`telegram.Message`: On success, if edited message is sent by the bot, the
-            edited Message is returned, otherwise ``True`` is returned.
+            edited Message is returned, otherwise :obj:`True` is returned.
         """
 
         url = '{}/editMessageLiveLocation'.format(self.base_url)
@@ -1268,7 +1269,7 @@ class Bot(TelegramObject):
 
         Returns:
             :class:`telegram.Message`: On success, if edited message is sent by the bot, the
-            edited Message is returned, otherwise ``True`` is returned.
+            edited Message is returned, otherwise :obj:`True` is returned.
         """
 
         url = '{}/stopMessageLiveLocation'.format(self.base_url)
@@ -1453,7 +1454,7 @@ class Bot(TelegramObject):
             chat_id (:obj:`int` | :obj:`str`): Unique identifier for the target chat or username
                 of the target channel (in the format @channelusername).
             game_short_name (:obj:`str`): Short name of the game, serves as the unique identifier
-                for the game. Set up your games via Botfather.
+                for the game. Set up your games via `@BotFather <https://t.me/BotFather>`_.
             disable_notification (:obj:`bool`, optional): Sends the message silently. Users will
                 receive a notification with no sound.
             reply_to_message_id (:obj:`int`, optional): If the message is a reply, ID of the
@@ -1501,7 +1502,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :obj:`bool`:  On success, ``True`` is returned.
+            :obj:`bool`:  On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -1526,20 +1527,29 @@ class Bot(TelegramObject):
                             switch_pm_text=None,
                             switch_pm_parameter=None,
                             timeout=None,
+                            current_offset=None,
                             **kwargs):
         """
         Use this method to send answers to an inline query. No more than 50 results per query are
         allowed.
 
+        Warning:
+            In most use cases :attr:`current_offset` should not be passed manually. Instead of
+            calling this method directly, use the shortcut :meth:`telegram.InlineQuery.answer` with
+            ``auto_pagination=True``, which will take care of passing the correct value.
+
         Args:
             inline_query_id (:obj:`str`): Unique identifier for the answered query.
-            results (List[:class:`telegram.InlineQueryResult`)]: A list of results for the inline
-                query.
+            results (List[:class:`telegram.InlineQueryResult`] | Callable): A list of results for
+                the inline query. In case :attr:`current_offset` is passed, ``results`` may also be
+                a callable accepts the current page index starting from 0. It must return either a
+                list of :class:`telegram.InlineResult` instances or :obj:`None` if there are no
+                more results.
             cache_time (:obj:`int`, optional): The maximum amount of time in seconds that the
                 result of the inline query may be cached on the server. Defaults to 300.
-            is_personal (:obj:`bool`, optional): Pass True, if results may be cached on the server
-                side only for the user that sent the query. By default, results may be returned to
-                any user who sends the same query.
+            is_personal (:obj:`bool`, optional): Pass :obj:`True`, if results may be cached on
+                the server side only for the user that sent the query. By default,
+                results may be returned to any user who sends the same query.
             next_offset (:obj:`str`, optional): Pass the offset that a client should send in the
                 next query with the same text to receive more results. Pass an empty string if
                 there are no more results or if you don't support pagination. Offset length can't
@@ -1550,8 +1560,12 @@ class Bot(TelegramObject):
             switch_pm_parameter (:obj:`str`, optional): Deep-linking parameter for the /start
                 message sent to the bot when user presses the switch button. 1-64 characters,
                 only A-Z, a-z, 0-9, _ and - are allowed.
+            current_offset (:obj:`str`, optional): The :attr:`telegram.InlineQuery.offset` of
+                the inline query to answer. If passed, PTB will automatically take care of
+                the pagination for you, i.e. pass the correct ``next_offset`` and truncate the
+                results list/get the results from the callable you passed.
             timeout (:obj:`int` | :obj:`float`, optional): If this value is specified, use it as
-                he read timeout from the server (instead of the one specified during creation of
+                the read timeout from the server (instead of the one specified during creation of
                 the connection pool).
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
@@ -1565,7 +1579,7 @@ class Bot(TelegramObject):
             where they wanted to use the bot's inline capabilities.
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -1573,7 +1587,35 @@ class Bot(TelegramObject):
         """
         url = '{}/answerInlineQuery'.format(self.base_url)
 
-        for res in results:
+        if current_offset is not None and next_offset is not None:
+            raise ValueError('`current_offset` and `next_offset` are mutually exclusive!')
+
+        if current_offset is not None:
+            if current_offset == '':
+                current_offset = 0
+            else:
+                current_offset = int(current_offset)
+
+            next_offset = ''
+
+            if callable(results):
+                effective_results = results(current_offset)
+                if not effective_results:
+                    effective_results = []
+                else:
+                    next_offset = current_offset + 1
+            else:
+                if len(results) > (current_offset + 1) * MAX_INLINE_QUERY_RESULTS:
+                    next_offset = current_offset + 1
+                    effective_results = results[
+                        current_offset * MAX_INLINE_QUERY_RESULTS:
+                        next_offset * MAX_INLINE_QUERY_RESULTS]
+                else:
+                    effective_results = results[current_offset * MAX_INLINE_QUERY_RESULTS:]
+        else:
+            effective_results = results
+
+        for res in effective_results:
             if res._has_parse_mode and res.parse_mode == DEFAULT_NONE:
                 if self.defaults:
                     res.parse_mode = self.defaults.parse_mode
@@ -1594,10 +1636,8 @@ class Bot(TelegramObject):
                     else:
                         res.input_message_content.disable_web_page_preview = None
 
-        results = [res.to_dict() for res in results]
-
-        data = {'inline_query_id': inline_query_id, 'results': results}
-
+        effective_results = [res.to_dict() for res in effective_results]
+        data = {'inline_query_id': inline_query_id, 'results': effective_results}
         if cache_time or cache_time == 0:
             data['cache_time'] = cache_time
         if is_personal:
@@ -1723,7 +1763,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :obj:`bool` On success, ``True`` is returned.
+            :obj:`bool` On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -1760,7 +1800,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :obj:`bool` On success, ``True`` is returned.
+            :obj:`bool` On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -1797,10 +1837,12 @@ class Bot(TelegramObject):
             callback_query_id (:obj:`str`): Unique identifier for the query to be answered.
             text (:obj:`str`, optional): Text of the notification. If not specified, nothing will
                 be shown to the user, 0-200 characters.
-            show_alert (:obj:`bool`, optional): If true, an alert will be shown by the client
-                instead of a notification at the top of the chat screen. Defaults to false.
+            show_alert (:obj:`bool`, optional): If :obj:`True`, an alert will be shown by the
+                client instead of a notification at the top of the chat screen. Defaults to
+                :obj:`False`.
             url (:obj:`str`, optional): URL that will be opened by the user's client. If you have
-                created a Game and accepted the conditions via @Botfather, specify the URL that
+                created a Game and accepted the conditions via
+                `@BotFather <https://t.me/BotFather>`_, specify the URL that
                 opens your game - note that this will only work if the query comes from a callback
                 game button. Otherwise, you may use links like t.me/your_bot?start=XXXX that open
                 your bot with a parameter.
@@ -1812,7 +1854,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :obj:`bool` On success, ``True`` is returned.
+            :obj:`bool` On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -1874,7 +1916,7 @@ class Bot(TelegramObject):
 
         Returns:
             :class:`telegram.Message`: On success, if edited message is sent by the bot, the
-            edited Message is returned, otherwise ``True`` is returned.
+            edited Message is returned, otherwise :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -1933,7 +1975,7 @@ class Bot(TelegramObject):
 
         Returns:
             :class:`telegram.Message`: On success, if edited message is sent by the bot, the
-            edited Message is returned, otherwise ``True`` is returned.
+            edited Message is returned, otherwise :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -1995,7 +2037,7 @@ class Bot(TelegramObject):
 
         Returns:
             :class:`telegram.Message`: On success, if edited message is sent by the bot, the
-            edited Message is returned, otherwise ``True`` is returned.
+            edited Message is returned, otherwise :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -2048,7 +2090,7 @@ class Bot(TelegramObject):
 
         Returns:
             :class:`telegram.Message`: On success, if edited message is sent by the bot, the
-            edited Message is returned, otherwise ``True`` is returned.
+            edited Message is returned, otherwise :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -2204,7 +2246,7 @@ class Bot(TelegramObject):
             Webhooks`_.
 
         Returns:
-            :obj:`bool` On success, ``True`` is returned.
+            :obj:`bool` On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -2256,7 +2298,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :obj:`bool` On success, ``True`` is returned.
+            :obj:`bool` On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -2283,7 +2325,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :obj:`bool` On success, ``True`` is returned.
+            :obj:`bool` On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -2439,7 +2481,7 @@ class Bot(TelegramObject):
 
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
         """
 
         url = '{}/setChatStickerSet'.format(self.base_url)
@@ -2466,7 +2508,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-             :obj:`bool`: On success, ``True`` is returned.
+             :obj:`bool`: On success, :obj:`True` is returned.
         """
 
         url = '{}/deleteChatStickerSet'.format(self.base_url)
@@ -2517,10 +2559,10 @@ class Bot(TelegramObject):
         Args:
             user_id (:obj:`int`): User identifier.
             score (:obj:`int`): New score, must be non-negative.
-            force (:obj:`bool`, optional): Pass True, if the high score is allowed to decrease.
-                This can be useful when fixing mistakes or banning cheaters.
-            disable_edit_message (:obj:`bool`, optional): Pass True, if the game message should not
-                be automatically edited to include the current scoreboard.
+            force (:obj:`bool`, optional): Pass :obj:`True`, if the high score is allowed to
+                decrease. This can be useful when fixing mistakes or banning cheaters.
+            disable_edit_message (:obj:`bool`, optional): Pass :obj:`True`, if the game message
+                should not be automatically edited to include the current scoreboard.
             chat_id (:obj:`int` | :obj:`str`, optional): Required if inline_message_id is not
                 specified. Unique identifier for the target chat.
             message_id (:obj:`int`, optional): Required if inline_message_id is not specified.
@@ -2534,11 +2576,11 @@ class Bot(TelegramObject):
 
         Returns:
             :class:`telegram.Message`: The edited message, or if the message wasn't sent by the bot
-            , ``True``.
+            , :obj:`True`.
 
         Raises:
             :class:`telegram.TelegramError`: If the new score is not greater than the user's
-            current score in the chat and force is False.
+            current score in the chat and force is :obj:`False`.
 
         """
         url = '{}/setGameScore'.format(self.base_url)
@@ -2641,14 +2683,15 @@ class Bot(TelegramObject):
             description (:obj:`str`): Product description, 1-255 characters.
             payload (:obj:`str`): Bot-defined invoice payload, 1-128 bytes. This will not be
                 displayed to the user, use for your internal processes.
-            provider_token (:obj:`str`): Payments provider token, obtained via Botfather.
+            provider_token (:obj:`str`): Payments provider token, obtained via
+                `@BotFather <https://t.me/BotFather>`_.
             start_parameter (:obj:`str`): Unique deep-linking parameter that can be used to
                 generate this invoice when used as a start parameter.
             currency (:obj:`str`): Three-letter ISO 4217 currency code.
             prices (List[:class:`telegram.LabeledPrice`)]: Price breakdown, a JSON-serialized list
                 of components (e.g. product price, tax, discount, delivery cost, delivery tax,
                 bonus, etc.).
-            provider_data (:obj:`str` | :obj:`object`, optional): JSON-encoded data about the
+            provider_data (:obj:`str` | :obj:`object`, optional): JSON-serialized data about the
                 invoice, which will be shared with the payment provider. A detailed description of
                 required fields should be provided by the payment provider. When an object is
                 passed, it will be encoded as JSON.
@@ -2658,20 +2701,20 @@ class Bot(TelegramObject):
             photo_size (:obj:`str`, optional): Photo size.
             photo_width (:obj:`int`, optional): Photo width.
             photo_height (:obj:`int`, optional): Photo height.
-            need_name (:obj:`bool`, optional): Pass True, if you require the user's full name to
-                complete the order.
-            need_phone_number (:obj:`bool`, optional): Pass True, if you require the user's
+            need_name (:obj:`bool`, optional): Pass :obj:`True`, if you require the user's full
+                name to complete the order.
+            need_phone_number (:obj:`bool`, optional): Pass :obj:`True`, if you require the user's
                 phone number to complete the order.
-            need_email (:obj:`bool`, optional): Pass True, if you require the user's email to
-                complete the order.
-            need_shipping_address (:obj:`bool`, optional): Pass True, if you require the user's
-                shipping address to complete the order.
-            send_phone_number_to_provider (:obj:`bool`, optional): Pass True, if user's phone
-                number should be sent to provider.
-            send_email_to_provider (:obj:`bool`, optional): Pass True, if user's email address
-                should be sent to provider.
-            is_flexible (:obj:`bool`, optional): Pass True, if the final price depends on the
-                shipping method.
+            need_email (:obj:`bool`, optional): Pass :obj:`True`, if you require the user's email
+                to complete the order.
+            need_shipping_address (:obj:`bool`, optional): Pass :obj:`True`, if you require the
+                user's shipping address to complete the order.
+            send_phone_number_to_provider (:obj:`bool`, optional): Pass :obj:`True`, if user's
+                phone number should be sent to provider.
+            send_email_to_provider (:obj:`bool`, optional): Pass :obj:`True`, if user's email
+                address should be sent to provider.
+            is_flexible (:obj:`bool`, optional): Pass :obj:`True`, if the final price depends on
+                the shipping method.
             disable_notification (:obj:`bool`, optional): Sends the message silently. Users will
                 receive a notification with no sound.
             reply_to_message_id (:obj:`int`, optional): If the message is a reply, ID of the
@@ -2750,12 +2793,12 @@ class Bot(TelegramObject):
 
         Args:
             shipping_query_id (:obj:`str`): Unique identifier for the query to be answered.
-            ok (:obj:`bool`): Specify True if delivery to the specified address is possible and
-                False if there are any problems (for example, if delivery to the specified address
-                is not possible).
+            ok (:obj:`bool`): Specify :obj:`True` if delivery to the specified address is possible
+                and :obj:`False` if there are any problems (for example, if delivery to the
+                specified address is not possible).
             shipping_options (List[:class:`telegram.ShippingOption`]), optional]: Required if ok is
-                True. A JSON-serialized array of available shipping options.
-            error_message (:obj:`str`, optional): Required if ok is False. Error message in
+                :obj:`True`. A JSON-serialized array of available shipping options.
+            error_message (:obj:`str`, optional): Required if ok is :obj:`False`. Error message in
                 human readable form that explains why it is impossible to complete the order (e.g.
                 "Sorry, delivery to your desired address is unavailable"). Telegram will display
                 this message to the user.
@@ -2765,7 +2808,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :obj:`bool`: On success, True is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -2811,20 +2854,21 @@ class Bot(TelegramObject):
 
         Args:
             pre_checkout_query_id (:obj:`str`): Unique identifier for the query to be answered.
-            ok (:obj:`bool`): Specify True if everything is alright (goods are available, etc.) and
-                the bot is ready to proceed with the order. Use False if there are any problems.
-            error_message (:obj:`str`, optional): Required if ok is False. Error message in human
-                readable form that explains the reason for failure to proceed with the checkout
-                (e.g. "Sorry, somebody just bought the last of our amazing black T-shirts while you
-                were busy filling out your payment details. Please choose a different color or
-                garment!"). Telegram will display this message to the user.
+            ok (:obj:`bool`): Specify :obj:`True` if everything is alright
+                (goods are available, etc.) and the bot is ready to proceed with the order. Use
+                :obj:`False` if there are any problems.
+            error_message (:obj:`str`, optional): Required if ok is :obj:`False`. Error message
+                in human readable form that explains the reason for failure to proceed with
+                the checkout (e.g. "Sorry, somebody just bought the last of our amazing black
+                T-shirts while you were busy filling out your payment details. Please choose a
+                different color or garment!"). Telegram will display this message to the user.
             timeout (:obj:`int` | :obj:`float`, optional): If this value is specified, use it as
                 the read timeout from the server (instead of the one specified during creation of
                 the connection pool).
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -2855,8 +2899,8 @@ class Bot(TelegramObject):
                              timeout=None, **kwargs):
         """
         Use this method to restrict a user in a supergroup. The bot must be an administrator in
-        the supergroup for this to work and must have the appropriate admin rights. Pass True for
-        all boolean parameters to lift restrictions from a user.
+        the supergroup for this to work and must have the appropriate admin rights. Pass
+        :obj:`True` for all boolean parameters to lift restrictions from a user.
 
         Note:
             Since Bot API 4.4, :attr:`restrict_chat_member` takes the new user permissions in a
@@ -2871,14 +2915,15 @@ class Bot(TelegramObject):
                 will be lifted for the user, unix time. If user is restricted for more than 366
                 days or less than 30 seconds from the current time, they are considered to be
                 restricted forever.
-            permissions (:class:`telegram.ChatPermissions`): New user permissions.
+            permissions (:class:`telegram.ChatPermissions`): A JSON-serialized object for new user
+                permissions.
             timeout (:obj:`int` | :obj:`float`, optional): If this value is specified, use it as
                 the read timeout from the server (instead of the one specified during creation of
                 the connection pool).
             **kwargs (:obj:`dict`): Arbitrary keyword arguments
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -2906,28 +2951,28 @@ class Bot(TelegramObject):
         """
         Use this method to promote or demote a user in a supergroup or a channel. The bot must be
         an administrator in the chat for this to work and must have the appropriate admin rights.
-        Pass False for all boolean parameters to demote a user.
+        Pass :obj:`False` for all boolean parameters to demote a user.
 
         Args:
             chat_id (:obj:`int` | :obj:`str`): Unique identifier for the target chat or username
                 of the target supergroup (in the format @supergroupusername).
             user_id (:obj:`int`): Unique identifier of the target user.
-            can_change_info (:obj:`bool`, optional): Pass True, if the administrator can change
-                chat title, photo and other settings.
-            can_post_messages (:obj:`bool`, optional): Pass True, if the administrator can
+            can_change_info (:obj:`bool`, optional): Pass :obj:`True`, if the administrator can
+                change chat title, photo and other settings.
+            can_post_messages (:obj:`bool`, optional): Pass :obj:`True`, if the administrator can
                 create channel posts, channels only.
-            can_edit_messages (:obj:`bool`, optional): Pass True, if the administrator can edit
-                messages of other users, channels only.
-            can_delete_messages (:obj:`bool`, optional): Pass True, if the administrator can
+            can_edit_messages (:obj:`bool`, optional): Pass :obj:`True`, if the administrator can
+                edit messages of other users, channels only.
+            can_delete_messages (:obj:`bool`, optional): Pass :obj:`True`, if the administrator can
                 delete messages of other users.
-            can_invite_users (:obj:`bool`, optional): Pass True, if the administrator can invite
-                new users to the chat.
-            can_restrict_members (:obj:`bool`, optional): Pass True, if the administrator can
-                restrict, ban or unban chat members.
-            can_pin_messages (:obj:`bool`, optional): Pass True, if the administrator can pin
-                messages, supergroups only.
-            can_promote_members (:obj:`bool`, optional): Pass True, if the administrator can add
-                new administrators with a subset of his own privileges or demote administrators
+            can_invite_users (:obj:`bool`, optional): Pass :obj:`True`, if the administrator can
+                invite new users to the chat.
+            can_restrict_members (:obj:`bool`, optional): Pass :obj:`True`, if the administrator
+                can restrict, ban or unban chat members.
+            can_pin_messages (:obj:`bool`, optional): Pass :obj:`True`, if the administrator can
+                pin messages, supergroups only.
+            can_promote_members (:obj:`bool`, optional): Pass :obj:`True`, if the administrator can
+                add new administrators with a subset of his own privileges or demote administrators
                 that he has promoted, directly or indirectly (promoted by administrators that were
                 appointed by him).
             timeout (:obj:`int` | :obj:`float`, optional): If this value is specified, use it as
@@ -2936,7 +2981,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -2985,7 +3030,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -3023,7 +3068,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -3086,7 +3131,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -3120,7 +3165,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -3152,7 +3197,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -3184,7 +3229,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -3212,16 +3257,16 @@ class Bot(TelegramObject):
             chat_id (:obj:`int` | :obj:`str`): Unique identifier for the target chat or username
                 of the target channel (in the format @channelusername).
             message_id (:obj:`int`): Identifier of a message to pin.
-            disable_notification (:obj:`bool`, optional): Pass True, if it is not necessary to send
-                a notification to all group members about the new pinned message. Notifications
-                are always disabled in channels.
+            disable_notification (:obj:`bool`, optional): Pass :obj:`True`, if it is not necessary
+                to send a notification to all group members about the new pinned message.
+                Notifications are always disabled in channels.
             timeout (:obj:`int` | :obj:`float`, optional): If this value is specified, use it as
                 the read timeout from the server (instead of the one specified during creation of
                 the connection pool).
             **kwargs (:obj:`dict`): Arbitrary keyword arguments
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -3256,7 +3301,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -3320,7 +3365,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :class:`telegram.File`: The uploaded File
+            :class:`telegram.File`: On success, the uploaded File is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -3373,10 +3418,10 @@ class Bot(TelegramObject):
             tgs_sticker (:obj:`str` | `filelike object`, optional): TGS animation with the sticker,
                 uploaded using multipart/form-data. See
                 https://core.telegram.org/animated_stickers#technical-requirements for technical
-                requirements
+                requirements.
             emojis (:obj:`str`): One or more emoji corresponding to the sticker.
-            contains_masks (:obj:`bool`, optional): Pass True, if a set of mask stickers should be
-                created.
+            contains_masks (:obj:`bool`, optional): Pass :obj:`True`, if a set of mask stickers
+                should be created.
             mask_position (:class:`telegram.MaskPosition`, optional): Position where the mask
                 should be placed on faces.
             timeout (:obj:`int` | :obj:`float`, optional): If this value is specified, use it as
@@ -3385,7 +3430,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -3438,7 +3483,7 @@ class Bot(TelegramObject):
         Args:
             user_id (:obj:`int`): User identifier of created sticker set owner.
             name (:obj:`str`): Sticker set name.
-            png_sticker (:obj:`str` | `filelike object`, optional): Png image with the sticker,
+            png_sticker (:obj:`str` | `filelike object`, optional): PNG image with the sticker,
                 must be up to 512 kilobytes in size, dimensions must not exceed 512px,
                 and either width or height must be exactly 512px. Pass a file_id as a String to
                 send a file that already exists on the Telegram servers, pass an HTTP URL as a
@@ -3447,7 +3492,7 @@ class Bot(TelegramObject):
             tgs_sticker (:obj:`str` | `filelike object`, optional): TGS animation with the sticker,
                 uploaded using multipart/form-data. See
                 https://core.telegram.org/animated_stickers#technical-requirements for technical
-                requirements
+                requirements.
             emojis (:obj:`str`): One or more emoji corresponding to the sticker.
             mask_position (:class:`telegram.MaskPosition`, optional): Position where the mask
                 should be placed on faces.
@@ -3457,7 +3502,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -3500,7 +3545,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -3527,7 +3572,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -3559,14 +3604,15 @@ class Bot(TelegramObject):
             https://core.telegram.org/animated_stickers#technical-requirements for animated sticker
             technical requirements. Pass a file_id as a String to send a file that already exists
             on the Telegram servers, pass an HTTP URL as a String for Telegram to get a file from
-            the Internet, or upload a new one using multipart/form-data.
+            the Internet, or upload a new one using multipart/form-data. Animated sticker set
+            thumbnail can't be uploaded via HTTP URL.
             timeout (:obj:`int` | :obj:`float`, optional): If this value is specified, use it as
                 the read timeout from the server (instead of the one specified during
                 creation of the connection pool).
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -3606,7 +3652,7 @@ class Bot(TelegramObject):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         Returns:
-            :obj:`bool`: On success, ``True`` is returned.
+            :obj:`bool`: On success, :obj:`True` is returned.
 
         Raises:
             :class:`telegram.TelegramError`
@@ -3648,12 +3694,12 @@ class Bot(TelegramObject):
                 of the target channel (in the format @channelusername).
             question (:obj:`str`): Poll question, 1-255 characters.
             options (List[:obj:`str`]): List of answer options, 2-10 strings 1-100 characters each.
-            is_anonymous (:obj:`bool`, optional): True, if the poll needs to be anonymous,
-                defaults to True.
+            is_anonymous (:obj:`bool`, optional): :obj:`True`, if the poll needs to be anonymous,
+                defaults to :obj:`True`.
             type (:obj:`str`, optional): Poll type, :attr:`telegram.Poll.QUIZ` or
                 :attr:`telegram.Poll.REGULAR`, defaults to :attr:`telegram.Poll.REGULAR`.
-            allows_multiple_answers (:obj:`bool`, optional): True, if the poll allows multiple
-                answers, ignored for polls in quiz mode, defaults to False.
+            allows_multiple_answers (:obj:`bool`, optional): :obj:`True`, if the poll allows
+                multiple answers, ignored for polls in quiz mode, defaults to :obj:`False`.
             correct_option_id (:obj:`int`, optional): 0-based identifier of the correct answer
                 option, required for polls in quiz mode.
             explanation (:obj:`str`, optional): Text that is shown when a user chooses an incorrect
@@ -3668,8 +3714,8 @@ class Bot(TelegramObject):
                 timestamp) when the poll will be automatically closed. Must be at least 5 and no
                 more than 600 seconds in the future. Can't be used together with
                 :attr:`open_period`.
-            is_closed (:obj:`bool`, optional): Pass True, if the poll needs to be immediately
-                closed. This can be useful for poll preview.
+            is_closed (:obj:`bool`, optional): Pass :obj:`True`, if the poll needs to be
+                immediately closed. This can be useful for poll preview.
             disable_notification (:obj:`bool`, optional): Sends the message silently. Users will
                 receive a notification with no sound.
             reply_to_message_id (:obj:`int`, optional): If the message is a reply, ID of the

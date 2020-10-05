@@ -29,32 +29,32 @@ class User(TelegramObject):
 
     Attributes:
         id (:obj:`int`): Unique identifier for this user or bot.
-        is_bot (:obj:`bool`): True, if this user is a bot
+        is_bot (:obj:`bool`): :obj:`True`, if this user is a bot.
         first_name (:obj:`str`): User's or bot's first name.
         last_name (:obj:`str`): Optional. User's or bot's last name.
         username (:obj:`str`): Optional. User's or bot's username.
         language_code (:obj:`str`): Optional. IETF language tag of the user's language.
-        can_join_groups (:obj:`str`): Optional. True, if the bot can be invited to groups.
+        can_join_groups (:obj:`str`): Optional. :obj:`True`, if the bot can be invited to groups.
             Returned only in :attr:`telegram.Bot.get_me` requests.
-        can_read_all_group_messages (:obj:`str`): Optional. True, if privacy mode is disabled
-            for the bot. Returned only in :attr:`telegram.Bot.get_me` requests.
-        supports_inline_queries (:obj:`str`): Optional. True, if the bot supports inline queries.
-            Returned only in :attr:`telegram.Bot.get_me` requests.
+        can_read_all_group_messages (:obj:`str`): Optional. :obj:`True`, if privacy mode is
+            disabled for the bot. Returned only in :attr:`telegram.Bot.get_me` requests.
+        supports_inline_queries (:obj:`str`): Optional. :obj:`True`, if the bot supports inline
+            queries. Returned only in :attr:`telegram.Bot.get_me` requests.
         bot (:class:`telegram.Bot`): Optional. The Bot to use for instance methods.
 
     Args:
         id (:obj:`int`): Unique identifier for this user or bot.
-        is_bot (:obj:`bool`): True, if this user is a bot
+        is_bot (:obj:`bool`): :obj:`True`, if this user is a bot.
         first_name (:obj:`str`): User's or bot's first name.
         last_name (:obj:`str`, optional): User's or bot's last name.
         username (:obj:`str`, optional): User's or bot's username.
         language_code (:obj:`str`, optional): IETF language tag of the user's language.
-        can_join_groups (:obj:`str`, optional): True, if the bot can be invited to groups.
+        can_join_groups (:obj:`str`, optional): :obj:`True`, if the bot can be invited to groups.
             Returned only in :attr:`telegram.Bot.get_me` requests.
-        can_read_all_group_messages (:obj:`str`, optional): True, if privacy mode is disabled
-            for the bot. Returned only in :attr:`telegram.Bot.get_me` requests.
-        supports_inline_queries (:obj:`str`, optional): True, if the bot supports inline queries.
-            Returned only in :attr:`telegram.Bot.get_me` requests.
+        can_read_all_group_messages (:obj:`str`, optional): :obj:`True`, if privacy mode is
+            disabled for the bot. Returned only in :attr:`telegram.Bot.get_me` requests.
+        supports_inline_queries (:obj:`str`, optional): :obj:`True`, if the bot supports inline
+            queries. Returned only in :attr:`telegram.Bot.get_me` requests.
         bot (:class:`telegram.Bot`, optional): The Bot to use for instance methods.
 
     """
@@ -124,7 +124,7 @@ class User(TelegramObject):
         """
         Shortcut for::
 
-                bot.get_user_profile_photos(update.message.from_user.id, *args, **kwargs)
+                bot.get_user_profile_photos(update.effective_user.id, *args, **kwargs)
 
         """
 
@@ -143,6 +143,10 @@ class User(TelegramObject):
 
     def mention_markdown(self, name=None):
         """
+        Note:
+            :attr:`telegram.ParseMode.MARKDOWN` is is a legacy mode, retained by Telegram for
+            backward compatibility. You should use :meth:`mention_markdown_v2` instead.
+
         Args:
             name (:obj:`str`): The name used as a link for the user. Defaults to :attr:`full_name`.
 
@@ -183,9 +187,7 @@ class User(TelegramObject):
     def send_message(self, *args, **kwargs):
         """Shortcut for::
 
-            bot.send_message(User.id, *args, **kwargs)
-
-        Where User is the current instance.
+            bot.send_message(update.effective_user.id, *args, **kwargs)
 
         Returns:
             :class:`telegram.Message`: On success, instance representing the message posted.
@@ -196,9 +198,7 @@ class User(TelegramObject):
     def send_photo(self, *args, **kwargs):
         """Shortcut for::
 
-            bot.send_photo(User.id, *args, **kwargs)
-
-        Where User is the current instance.
+            bot.send_photo(update.effective_user.id, *args, **kwargs)
 
         Returns:
             :class:`telegram.Message`: On success, instance representing the message posted.
@@ -206,12 +206,21 @@ class User(TelegramObject):
         """
         return self.bot.send_photo(self.id, *args, **kwargs)
 
+    def send_media_group(self, *args, **kwargs):
+        """Shortcut for::
+
+            bot.send_media_group(update.effective_user.id, *args, **kwargs)
+
+        Returns:
+            List[:class:`telegram.Message`:] On success, instance representing the message posted.
+
+        """
+        return self.bot.send_media_group(self.id, *args, **kwargs)
+
     def send_audio(self, *args, **kwargs):
         """Shortcut for::
 
-            bot.send_audio(User.id, *args, **kwargs)
-
-        Where User is the current instance.
+            bot.send_audio(update.effective_user.id, *args, **kwargs)
 
         Returns:
             :class:`telegram.Message`: On success, instance representing the message posted.
@@ -219,12 +228,46 @@ class User(TelegramObject):
         """
         return self.bot.send_audio(self.id, *args, **kwargs)
 
+    def send_chat_action(self, *args, **kwargs):
+        """Shortcut for::
+
+            bot.send_chat_action(update.effective_user.id, *args, **kwargs)
+
+        Returns:
+            :obj:`True`: On success.
+
+        """
+        return self.bot.send_chat_action(self.id, *args, **kwargs)
+
+    send_action = send_chat_action
+    """Alias for :attr:`send_chat_action`"""
+
+    def send_contact(self, *args, **kwargs):
+        """Shortcut for::
+
+            bot.send_contact(update.effective_user.id, *args, **kwargs)
+
+        Returns:
+            :class:`telegram.Message`: On success, instance representing the message posted.
+
+        """
+        return self.bot.send_contact(self.id, *args, **kwargs)
+
+    def send_dice(self, *args, **kwargs):
+        """Shortcut for::
+
+            bot.send_dice(update.effective_user.id, *args, **kwargs)
+
+        Returns:
+            :class:`telegram.Message`: On success, instance representing the message posted.
+
+        """
+        return self.bot.send_dice(self.id, *args, **kwargs)
+
     def send_document(self, *args, **kwargs):
         """Shortcut for::
 
-            bot.send_document(User.id, *args, **kwargs)
-
-        Where User is the current instance.
+            bot.send_document(update.effective_user.id, *args, **kwargs)
 
         Returns:
             :class:`telegram.Message`: On success, instance representing the message posted.
@@ -232,12 +275,43 @@ class User(TelegramObject):
         """
         return self.bot.send_document(self.id, *args, **kwargs)
 
+    def send_game(self, *args, **kwargs):
+        """Shortcut for::
+
+            bot.send_game(update.effective_user.id, *args, **kwargs)
+
+        Returns:
+            :class:`telegram.Message`: On success, instance representing the message posted.
+
+        """
+        return self.bot.send_game(self.id, *args, **kwargs)
+
+    def send_invoice(self, *args, **kwargs):
+        """Shortcut for::
+
+            bot.send_invoice(update.effective_user.id, *args, **kwargs)
+
+        Returns:
+            :class:`telegram.Message`: On success, instance representing the message posted.
+
+        """
+        return self.bot.send_invoice(self.id, *args, **kwargs)
+
+    def send_location(self, *args, **kwargs):
+        """Shortcut for::
+
+            bot.send_location(update.effective_user.id, *args, **kwargs)
+
+        Returns:
+            :class:`telegram.Message`: On success, instance representing the message posted.
+
+        """
+        return self.bot.send_location(self.id, *args, **kwargs)
+
     def send_animation(self, *args, **kwargs):
         """Shortcut for::
 
-            bot.send_animation(User.id, *args, **kwargs)
-
-        Where User is the current instance.
+            bot.send_animation(update.effective_user.id, *args, **kwargs)
 
         Returns:
             :class:`telegram.Message`: On success, instance representing the message posted.
@@ -248,9 +322,7 @@ class User(TelegramObject):
     def send_sticker(self, *args, **kwargs):
         """Shortcut for::
 
-            bot.send_sticker(User.id, *args, **kwargs)
-
-        Where User is the current instance.
+            bot.send_sticker(update.effective_user.id, *args, **kwargs)
 
         Returns:
             :class:`telegram.Message`: On success, instance representing the message posted.
@@ -261,9 +333,7 @@ class User(TelegramObject):
     def send_video(self, *args, **kwargs):
         """Shortcut for::
 
-            bot.send_video(User.id, *args, **kwargs)
-
-        Where User is the current instance.
+            bot.send_video(update.effective_user.id, *args, **kwargs)
 
         Returns:
             :class:`telegram.Message`: On success, instance representing the message posted.
@@ -271,12 +341,21 @@ class User(TelegramObject):
         """
         return self.bot.send_video(self.id, *args, **kwargs)
 
+    def send_venue(self, *args, **kwargs):
+        """Shortcut for::
+
+            bot.send_venue(update.effective_user.id, *args, **kwargs)
+
+        Returns:
+            :class:`telegram.Message`: On success, instance representing the message posted.
+
+        """
+        return self.bot.send_venue(self.id, *args, **kwargs)
+
     def send_video_note(self, *args, **kwargs):
         """Shortcut for::
 
-            bot.send_video_note(User.id, *args, **kwargs)
-
-        Where User is the current instance.
+            bot.send_video_note(update.effective_user.id, *args, **kwargs)
 
         Returns:
             :class:`telegram.Message`: On success, instance representing the message posted.
@@ -287,9 +366,7 @@ class User(TelegramObject):
     def send_voice(self, *args, **kwargs):
         """Shortcut for::
 
-            bot.send_voice(User.id, *args, **kwargs)
-
-        Where User is the current instance.
+            bot.send_voice(update.effective_user.id, *args, **kwargs)
 
         Returns:
             :class:`telegram.Message`: On success, instance representing the message posted.
@@ -300,9 +377,7 @@ class User(TelegramObject):
     def send_poll(self, *args, **kwargs):
         """Shortcut for::
 
-            bot.send_poll(User.id, *args, **kwargs)
-
-        Where User is the current instance.
+            bot.send_poll(update.effective_user.id, *args, **kwargs)
 
         Returns:
             :class:`telegram.Message`: On success, instance representing the message posted.

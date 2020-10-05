@@ -61,18 +61,18 @@ class BaseFilter(ABC):
 
 
     If you want to create your own filters create a class inheriting from this class and implement
-    a `filter` method that returns a boolean: `True` if the message should be handled, `False`
-    otherwise. Note that the filters work only as class instances, not actual class objects
-    (so remember to initialize your filter classes).
+    a :meth:`filter` method that returns a boolean: :obj:`True` if the message should be
+    handled, :obj:`False` otherwise. Note that the filters work only as class instances, not
+    actual class objects (so remember to initialize your filter classes).
 
     By default the filters name (what will get printed when converted to a string for display)
-    will be the class name. If you want to overwrite this assign a better name to the `name`
+    will be the class name. If you want to overwrite this assign a better name to the :attr:`name`
     class variable.
 
     Attributes:
         name (:obj:`str`): Name for this filter. Defaults to the type of filter.
-        update_filter (:obj:`bool`): Whether this filter should work on update. If ``False`` it
-            will run the filter on :attr:`update.effective_message``. Default is ``False``.
+        update_filter (:obj:`bool`): Whether this filter should work on update. If :obj:`False` it
+            will run the filter on :attr:`update.effective_message`. Default is :obj:`False`.
         data_filter (:obj:`bool`): Whether this filter is a data filter. A data filter should
             return a dict with lists. The dict will be merged with
             :class:`telegram.ext.CallbackContext`'s internal dict in most cases
@@ -109,14 +109,14 @@ class BaseFilter(ABC):
         """This method must be overwritten.
 
         Note:
-            If :attr:`update_filter` is false then the first argument is `message` and of
+            If :attr:`update_filter` is :obj:`False` then the first argument is `message` and of
             type :class:`telegram.Message`.
 
         Args:
             update (:class:`telegram.Update`): The update that is tested.
 
         Returns:
-            :obj:`dict` or :obj:`bool`
+            :obj:`dict` or :obj:`bool`.
 
         """
 
@@ -144,7 +144,7 @@ class MergedFilter(BaseFilter):
     """Represents a filter consisting of two other filters.
 
     Args:
-        base_filter: Filter 1 of the merged filter
+        base_filter: Filter 1 of the merged filter.
         and_filter: Optional filter to "and" with base_filter. Mutually exclusive with or_filter.
         or_filter: Optional filter to "or" with base_filter. Mutually exclusive with and_filter.
 
@@ -296,7 +296,7 @@ class Filters:
         To allow any text message, simply use
         ``MessageHandler(Filters.text, callback_method)``.
 
-        A simple usecase for passing a list is to allow only messages that were send by a
+        A simple use case for passing a list is to allow only messages that were sent by a
         custom :class:`telegram.ReplyKeyboardMarkup`::
 
             buttons = ['Start', 'Settings', 'Back']
@@ -377,7 +377,7 @@ class Filters:
     command = _Command()
     """
     Messages with a :attr:`telegram.MessageEntity.BOT_COMMAND`. By default only allows
-    messages `starting` with a bot command. Pass ``False`` to also allow messages that contain a
+    messages `starting` with a bot command. Pass :obj:`False` to also allow messages that contain a
     bot command `anywhere` in the text.
 
     Examples::
@@ -390,13 +390,13 @@ class Filters:
 
     Args:
         update (:obj:`bool`, optional): Whether to only allow messages that `start` with a bot
-            command. Defaults to ``True``.
+            command. Defaults to :obj:`True`.
     """
 
     class regex(BaseFilter):
         """
         Filters updates by searching for an occurrence of ``pattern`` in the message text.
-        The ``re.search`` function is used to determine whether an update should be filtered.
+        The ``re.search()`` function is used to determine whether an update should be filtered.
 
         Refer to the documentation of the ``re`` module for more information.
 
@@ -404,8 +404,8 @@ class Filters:
 
         Examples:
             Use ``MessageHandler(Filters.regex(r'help'), callback)`` to capture all messages that
-            contain the word help. You can also use
-            ``MessageHandler(Filters.regex(re.compile(r'help', re.IGNORECASE), callback)`` if
+            contain the word 'help'. You can also use
+            ``MessageHandler(Filters.regex(re.compile(r'help', re.IGNORECASE)), callback)`` if
             you want your pattern to be case insensitive. This approach is recommended
             if you need to specify flags on your pattern.
 
@@ -460,7 +460,7 @@ class Filters:
         name = 'Filters.document'
 
         class category(BaseFilter):
-            """This Filter filters documents by their category in the mime-type attribute
+            """Filters documents by their category in the mime-type attribute.
 
             Note:
                 This Filter only filters by the mime_type of the document,
@@ -469,8 +469,8 @@ class Filters:
                     send media with wrong types that don't fit to this handler.
 
             Example:
-                Filters.documents.category('audio/') returns `True` for all types
-                of audio sent as file, for example 'audio/mpeg' or 'audio/x-wav'
+                Filters.documents.category('audio/') returns :obj:`True` for all types
+                of audio sent as file, for example 'audio/mpeg' or 'audio/x-wav'.
             """
 
             def __init__(self, category):
@@ -547,7 +547,7 @@ class Filters:
         ``Filters.document`` for all document messages.
 
     Attributes:
-        category: This Filter filters documents by their category in the mime-type attribute
+        category: Filters documents by their category in the mime-type attribute
 
             Note:
                 This Filter only filters by the mime_type of the document,
@@ -557,13 +557,13 @@ class Filters:
 
             Example:
                 ``Filters.documents.category('audio/')`` filters all types
-                of audio sent as file, for example 'audio/mpeg' or 'audio/x-wav'
+                of audio sent as file, for example 'audio/mpeg' or 'audio/x-wav'.
         application: Same as ``Filters.document.category("application")``.
         audio: Same as ``Filters.document.category("audio")``.
         image: Same as ``Filters.document.category("image")``.
         video: Same as ``Filters.document.category("video")``.
         text: Same as ``Filters.document.category("text")``.
-        mime_type: This Filter filters documents by their mime-type attribute
+        mime_type: Filters documents by their mime-type attribute
 
             Note:
                 This Filter only filters by the mime_type of the document,
@@ -887,7 +887,8 @@ officedocument.wordprocessingml.document")``-
     """Messages sent in a group chat."""
 
     class user(BaseFilter):
-        """Filters messages to allow only those which are from specified user ID.
+        """Filters messages to allow only those which are from specified user ID(s) or
+        username(s).
 
         Examples:
             ``MessageHandler(Filters.user(1234), callback_method)``
@@ -919,7 +920,6 @@ officedocument.wordprocessingml.document")``-
             RuntimeError: If user_id and username are both present.
 
         """
-
         def __init__(self, user_id=None, username=None, allow_empty=False):
             self.allow_empty = allow_empty
             self.__lock = Lock()
@@ -1053,8 +1053,175 @@ officedocument.wordprocessingml.document")``-
                 return self.allow_empty
             return False
 
+    class via_bot(BaseFilter):
+        """Filters messages to allow only those which are from specified via_bot ID(s) or
+        username(s).
+
+        Examples:
+            ``MessageHandler(Filters.via_bot(1234), callback_method)``
+
+        Warning:
+            :attr:`bot_ids` will give a *copy* of the saved bot ids as :class:`frozenset`. This
+            is to ensure thread safety. To add/remove a bot, you should use :meth:`add_usernames`,
+            :meth:`add_bot_ids`, :meth:`remove_usernames` and :meth:`remove_bot_ids`. Only update
+            the entire set by ``filter.bot_ids/usernames = new_set``, if you are entirely sure
+            that it is not causing race conditions, as this will complete replace the current set
+            of allowed bots.
+
+        Attributes:
+            bot_ids(set(:obj:`int`), optional): Which bot ID(s) to allow through.
+            usernames(set(:obj:`str`), optional): Which username(s) (without leading '@') to allow
+                through.
+            allow_empty(:obj:`bool`, optional): Whether updates should be processed, if no bot
+                is specified in :attr:`bot_ids` and :attr:`usernames`.
+
+        Args:
+            bot_id(:obj:`int` | List[:obj:`int`], optional): Which bot ID(s) to allow
+                through.
+            username(:obj:`str` | List[:obj:`str`], optional): Which username(s) to allow
+                through. Leading '@'s in usernames will be discarded.
+            allow_empty(:obj:`bool`, optional): Whether updates should be processed, if no user
+                is specified in :attr:`bot_ids` and :attr:`usernames`. Defaults to :obj:`False`
+
+        Raises:
+            RuntimeError: If bot_id and username are both present.
+        """
+
+        def __init__(self, bot_id=None, username=None, allow_empty=False):
+            self.allow_empty = allow_empty
+            self.__lock = Lock()
+
+            self._bot_ids = set()
+            self._usernames = set()
+
+            self._set_bot_ids(bot_id)
+            self._set_usernames(username)
+
+        @staticmethod
+        def _parse_bot_id(bot_id):
+            if bot_id is None:
+                return set()
+            if isinstance(bot_id, int):
+                return {bot_id}
+            return set(bot_id)
+
+        @staticmethod
+        def _parse_username(username):
+            if username is None:
+                return set()
+            if isinstance(username, str):
+                return {username[1:] if username.startswith('@') else username}
+            return {bot[1:] if bot.startswith('@') else bot for bot in username}
+
+        def _set_bot_ids(self, bot_id):
+            with self.__lock:
+                if bot_id and self._usernames:
+                    raise RuntimeError("Can't set bot_id in conjunction with (already set) "
+                                       "usernames.")
+                self._bot_ids = self._parse_bot_id(bot_id)
+
+        def _set_usernames(self, username):
+            with self.__lock:
+                if username and self._bot_ids:
+                    raise RuntimeError("Can't set username in conjunction with (already set) "
+                                       "bot_ids.")
+                self._usernames = self._parse_username(username)
+
+        @property
+        def bot_ids(self):
+            with self.__lock:
+                return frozenset(self._bot_ids)
+
+        @bot_ids.setter
+        def bot_ids(self, bot_id):
+            self._set_bot_ids(bot_id)
+
+        @property
+        def usernames(self):
+            with self.__lock:
+                return frozenset(self._usernames)
+
+        @usernames.setter
+        def usernames(self, username):
+            self._set_usernames(username)
+
+        def add_usernames(self, username):
+            """
+            Add one or more users to the allowed usernames.
+
+            Args:
+                username(:obj:`str` | List[:obj:`str`], optional): Which username(s) to allow
+                    through. Leading '@'s in usernames will be discarded.
+            """
+            with self.__lock:
+                if self._bot_ids:
+                    raise RuntimeError("Can't set username in conjunction with (already set) "
+                                       "bot_ids.")
+
+                username = self._parse_username(username)
+                self._usernames |= username
+
+        def add_bot_ids(self, bot_id):
+            """
+            Add one or more users to the allowed user ids.
+
+            Args:
+                bot_id(:obj:`int` | List[:obj:`int`], optional): Which bot ID(s) to allow
+                    through.
+            """
+            with self.__lock:
+                if self._usernames:
+                    raise RuntimeError("Can't set bot_id in conjunction with (already set) "
+                                       "usernames.")
+
+                bot_id = self._parse_bot_id(bot_id)
+
+                self._bot_ids |= bot_id
+
+        def remove_usernames(self, username):
+            """
+            Remove one or more users from allowed usernames.
+
+            Args:
+                username(:obj:`str` | List[:obj:`str`], optional): Which username(s) to disallow
+                    through. Leading '@'s in usernames will be discarded.
+            """
+            with self.__lock:
+                if self._bot_ids:
+                    raise RuntimeError("Can't set username in conjunction with (already set) "
+                                       "bot_ids.")
+
+                username = self._parse_username(username)
+                self._usernames -= username
+
+        def remove_bot_ids(self, bot_id):
+            """
+            Remove one or more users from allowed user ids.
+
+            Args:
+                bot_id(:obj:`int` | List[:obj:`int`], optional): Which bot ID(s) to disallow
+                    through.
+            """
+            with self.__lock:
+                if self._usernames:
+                    raise RuntimeError("Can't set bot_id in conjunction with (already set) "
+                                       "usernames.")
+                bot_id = self._parse_bot_id(bot_id)
+                self._bot_ids -= bot_id
+
+        def filter(self, message):
+            """"""  # remove method from docs
+            if message.via_bot:
+                if self.bot_ids:
+                    return message.via_bot.id in self.bot_ids
+                if self.usernames:
+                    return (message.via_bot.username
+                            and message.via_bot.username in self.usernames)
+                return self.allow_empty
+            return False
+
     class chat(BaseFilter):
-        """Filters messages to allow only those which are from specified chat ID.
+        """Filters messages to allow only those which are from a specified chat ID or username.
 
         Examples:
             ``MessageHandler(Filters.chat(-1234), callback_method)``
@@ -1078,7 +1245,7 @@ officedocument.wordprocessingml.document")``-
             chat_id(:obj:`int` | List[:obj:`int`], optional): Which chat ID(s) to allow
                 through.
             username(:obj:`str` | List[:obj:`str`], optional): Which username(s) to allow
-                through. Leading '@'s in usernames will be discarded.
+                through. Leading `'@'` s in usernames will be discarded.
             allow_empty(:obj:`bool`, optional): Whether updates should be processed, if no chat
                 is specified in :attr:`chat_ids` and :attr:`usernames`. Defaults to :obj:`False`
 
@@ -1151,7 +1318,7 @@ officedocument.wordprocessingml.document")``-
 
             Args:
                 username(:obj:`str` | List[:obj:`str`], optional): Which username(s) to allow
-                    through. Leading '@'s in usernames will be discarded.
+                    through. Leading `'@'` s in usernames will be discarded.
             """
             with self.__lock:
                 if self._chat_ids:
@@ -1294,7 +1461,7 @@ officedocument.wordprocessingml.document")``-
         """Filters messages to only allow those which are from users with a certain language code.
 
         Note:
-            According to official telegram api documentation, not every single user has the
+            According to official Telegram API documentation, not every single user has the
             `language_code` attribute. Do not count on this filter working on all users.
 
         Examples:

@@ -43,11 +43,12 @@ class MessageHandler(Handler):
         pass_chat_data (:obj:`bool`): Determines whether ``chat_data`` will be passed to
             the callback function.
         message_updates (:obj:`bool`): Should "normal" message updates be handled?
-            Default is ``None``.
+            Default is :obj:`None`.
         channel_post_updates (:obj:`bool`): Should channel posts updates be handled?
-            Default is ``None``.
+            Default is :obj:`None`.
         edited_updates (:obj:`bool`): Should "edited" message updates be handled?
-            Default is ``None``.
+            Default is :obj:`None`.
+        run_async (:obj:`bool`): Determines whether the callback will run asynchronously.
 
     Note:
         :attr:`pass_user_data` and :attr:`pass_chat_data` determine whether a ``dict`` you
@@ -57,6 +58,10 @@ class MessageHandler(Handler):
 
         Note that this is DEPRECATED, and you should use context based callbacks. See
         https://git.io/fxJuV for more info.
+
+    Warning:
+        When setting ``run_async`` to :obj:`True`, you cannot rely on adding custom
+        attributes to :class:`telegram.ext.CallbackContext`. See its docs for more info.
 
     Args:
         filters (:class:`telegram.ext.BaseFilter`, optional): A filter inheriting from
@@ -75,31 +80,33 @@ class MessageHandler(Handler):
 
             The return value of the callback is usually ignored except for the special case of
             :class:`telegram.ext.ConversationHandler`.
-        pass_update_queue (:obj:`bool`, optional): If set to ``True``, a keyword argument called
+        pass_update_queue (:obj:`bool`, optional): If set to :obj:`True`, a keyword argument called
             ``update_queue`` will be passed to the callback function. It will be the ``Queue``
             instance used by the :class:`telegram.ext.Updater` and :class:`telegram.ext.Dispatcher`
-            that contains new updates which can be used to insert updates. Default is ``False``.
+            that contains new updates which can be used to insert updates. Default is :obj:`False`.
             DEPRECATED: Please switch to context based callbacks.
-        pass_job_queue (:obj:`bool`, optional): If set to ``True``, a keyword argument called
+        pass_job_queue (:obj:`bool`, optional): If set to :obj:`True`, a keyword argument called
             ``job_queue`` will be passed to the callback function. It will be a
             :class:`telegram.ext.JobQueue` instance created by the :class:`telegram.ext.Updater`
-            which can be used to schedule new jobs. Default is ``False``.
+            which can be used to schedule new jobs. Default is :obj:`False`.
             DEPRECATED: Please switch to context based callbacks.
-        pass_user_data (:obj:`bool`, optional): If set to ``True``, a keyword argument called
-            ``user_data`` will be passed to the callback function. Default is ``False``.
+        pass_user_data (:obj:`bool`, optional): If set to :obj:`True`, a keyword argument called
+            ``user_data`` will be passed to the callback function. Default is :obj:`False`.
             DEPRECATED: Please switch to context based callbacks.
-        pass_chat_data (:obj:`bool`, optional): If set to ``True``, a keyword argument called
-            ``chat_data`` will be passed to the callback function. Default is ``False``.
+        pass_chat_data (:obj:`bool`, optional): If set to :obj:`True`, a keyword argument called
+            ``chat_data`` will be passed to the callback function. Default is :obj:`False`.
             DEPRECATED: Please switch to context based callbacks.
         message_updates (:obj:`bool`, optional): Should "normal" message updates be handled?
-            Default is ``None``.
+            Default is :obj:`None`.
             DEPRECATED: Please switch to filters for update filtering.
         channel_post_updates (:obj:`bool`, optional): Should channel posts updates be handled?
-            Default is ``None``.
+            Default is :obj:`None`.
             DEPRECATED: Please switch to filters for update filtering.
         edited_updates (:obj:`bool`, optional): Should "edited" message updates be handled? Default
-            is ``None``.
+            is :obj:`None`.
             DEPRECATED: Please switch to filters for update filtering.
+        run_async (:obj:`bool`): Determines whether the callback will run asynchronously.
+            Defaults to :obj:`False`.
 
     Raises:
         ValueError
@@ -115,20 +122,21 @@ class MessageHandler(Handler):
                  pass_chat_data=False,
                  message_updates=None,
                  channel_post_updates=None,
-                 edited_updates=None):
+                 edited_updates=None,
+                 run_async=False):
 
         super().__init__(
             callback,
             pass_update_queue=pass_update_queue,
             pass_job_queue=pass_job_queue,
             pass_user_data=pass_user_data,
-            pass_chat_data=pass_chat_data)
+            pass_chat_data=pass_chat_data,
+            run_async=run_async)
         if message_updates is False and channel_post_updates is False and edited_updates is False:
             raise ValueError(
                 'message_updates, channel_post_updates and edited_updates are all False')
-        self.filters = filters
-        if self.filters is not None:
-            self.filters &= Filters.update
+        if filters is not None:
+            self.filters = Filters.update & filters
         else:
             self.filters = Filters.update
         if message_updates is not None:
