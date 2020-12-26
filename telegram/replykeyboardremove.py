@@ -17,6 +17,8 @@
 # You should have received a copy of the GNU Lesser Public License
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 """This module contains an object that represents a Telegram ReplyKeyboardRemove."""
+from typing import Any
+
 from telegram import ReplyMarkup
 
 
@@ -53,7 +55,7 @@ class ReplyKeyboardRemove(ReplyMarkup):
 
     """
 
-    def __init__(self, selective=False, **kwargs):
+    def __init__(self, selective: bool = False, **_kwargs: Any):
         # Required
         self.remove_keyboard = True
         # Optionals

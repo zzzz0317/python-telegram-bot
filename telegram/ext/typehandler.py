@@ -18,10 +18,19 @@
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 """This module contains the TypeHandler class."""
 
+from typing import TYPE_CHECKING, Any, Callable, Type, TypeVar, Union
+from telegram.utils.helpers import DefaultValue, DEFAULT_FALSE
+
 from .handler import Handler
 
+if TYPE_CHECKING:
+    from telegram.ext import CallbackContext
 
-class TypeHandler(Handler):
+RT = TypeVar('RT')
+UT = TypeVar('UT')
+
+
+class TypeHandler(Handler[UT]):
     """Handler class to handle updates of custom types.
 
     Attributes:
@@ -66,26 +75,29 @@ class TypeHandler(Handler):
 
     """
 
-    def __init__(self,
-                 type,
-                 callback,
-                 strict=False,
-                 pass_update_queue=False,
-                 pass_job_queue=False,
-                 run_async=False):
+    def __init__(
+        self,
+        type: Type[UT],  # pylint: disable=W0622
+        callback: Callable[[UT, 'CallbackContext'], RT],
+        strict: bool = False,
+        pass_update_queue: bool = False,
+        pass_job_queue: bool = False,
+        run_async: Union[bool, DefaultValue] = DEFAULT_FALSE,
+    ):
         super().__init__(
             callback,
             pass_update_queue=pass_update_queue,
             pass_job_queue=pass_job_queue,
-            run_async=run_async)
+            run_async=run_async,
+        )
         self.type = type
         self.strict = strict
 
-    def check_update(self, update):
+    def check_update(self, update: Any) -> bool:
         """Determines whether an update should be passed to this handlers :attr:`callback`.
 
         Args:
-            update (:class:`telegram.Update`): Incoming telegram update.
+            update (:obj:`object`): Incoming update.
 
         Returns:
             :obj:`bool`
@@ -93,5 +105,4 @@ class TypeHandler(Handler):
         """
         if not self.strict:
             return isinstance(update, self.type)
-        else:
-            return type(update) is self.type
+        return type(update) is self.type  # pylint: disable=C0123

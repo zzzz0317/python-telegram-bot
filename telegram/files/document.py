@@ -18,12 +18,21 @@
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 """This module contains an object that represents a Telegram Document."""
 
+from typing import TYPE_CHECKING, Any, Optional
+
 from telegram import PhotoSize, TelegramObject
+from telegram.utils.types import JSONDict
+
+if TYPE_CHECKING:
+    from telegram import Bot, File
 
 
 class Document(TelegramObject):
     """This object represents a general file
     (as opposed to photos, voice messages and audio files).
+
+    Objects of this class are comparable in terms of equality. Two objects of this class are
+    considered equal, if their :attr:`file_unique_id` is equal.
 
     Attributes:
         file_id (:obj:`str`): File identifier.
@@ -49,17 +58,20 @@ class Document(TelegramObject):
         **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
     """
+
     _id_keys = ('file_id',)
 
-    def __init__(self,
-                 file_id,
-                 file_unique_id,
-                 thumb=None,
-                 file_name=None,
-                 mime_type=None,
-                 file_size=None,
-                 bot=None,
-                 **kwargs):
+    def __init__(
+        self,
+        file_id: str,
+        file_unique_id: str,
+        thumb: PhotoSize = None,
+        file_name: str = None,
+        mime_type: str = None,
+        file_size: int = None,
+        bot: 'Bot' = None,
+        **_kwargs: Any,
+    ):
         # Required
         self.file_id = str(file_id)
         self.file_unique_id = str(file_unique_id)
@@ -73,24 +85,25 @@ class Document(TelegramObject):
         self._id_attrs = (self.file_unique_id,)
 
     @classmethod
-    def de_json(cls, data, bot):
+    def de_json(cls, data: Optional[JSONDict], bot: 'Bot') -> Optional['Document']:
+        data = cls.parse_data(data)
+
         if not data:
             return None
-
-        data = super().de_json(data, bot)
 
         data['thumb'] = PhotoSize.de_json(data.get('thumb'), bot)
 
         return cls(bot=bot, **data)
 
-    def get_file(self, timeout=None, **kwargs):
+    def get_file(self, timeout: int = None, api_kwargs: JSONDict = None) -> 'File':
         """Convenience wrapper over :attr:`telegram.Bot.get_file`
 
         Args:
             timeout (:obj:`int` | :obj:`float`, optional): If this value is specified, use it as
                 the read timeout from the server (instead of the one specified during creation of
                 the connection pool).
-            **kwargs (:obj:`dict`): Arbitrary keyword arguments.
+            api_kwargs (:obj:`dict`, optional): Arbitrary keyword arguments to be passed to the
+                Telegram API.
 
         Returns:
             :class:`telegram.File`
@@ -99,4 +112,4 @@ class Document(TelegramObject):
             :class:`telegram.TelegramError`
 
         """
-        return self.bot.get_file(self.file_id, timeout=timeout, **kwargs)
+        return self.bot.get_file(self.file_id, timeout=timeout, api_kwargs=api_kwargs)

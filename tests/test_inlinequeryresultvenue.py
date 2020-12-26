@@ -19,8 +19,13 @@
 
 import pytest
 
-from telegram import (InlineQueryResultVoice, InputTextMessageContent, InlineKeyboardButton,
-                      InlineQueryResultVenue, InlineKeyboardMarkup)
+from telegram import (
+    InlineQueryResultVoice,
+    InputTextMessageContent,
+    InlineKeyboardButton,
+    InlineQueryResultVenue,
+    InlineKeyboardMarkup,
+)
 
 
 @pytest.fixture(scope='class')
@@ -37,7 +42,10 @@ def inline_query_result_venue():
         thumb_width=TestInlineQueryResultVenue.thumb_width,
         thumb_height=TestInlineQueryResultVenue.thumb_height,
         input_message_content=TestInlineQueryResultVenue.input_message_content,
-        reply_markup=TestInlineQueryResultVenue.reply_markup)
+        reply_markup=TestInlineQueryResultVenue.reply_markup,
+        google_place_id=TestInlineQueryResultVenue.google_place_id,
+        google_place_type=TestInlineQueryResultVenue.google_place_type,
+    )
 
 
 class TestInlineQueryResultVenue:
@@ -49,6 +57,8 @@ class TestInlineQueryResultVenue:
     address = 'address'
     foursquare_id = 'foursquare id'
     foursquare_type = 'foursquare type'
+    google_place_id = 'google place id'
+    google_place_type = 'google place type'
     thumb_url = 'thumb url'
     thumb_width = 10
     thumb_height = 15
@@ -64,11 +74,15 @@ class TestInlineQueryResultVenue:
         assert inline_query_result_venue.address == self.address
         assert inline_query_result_venue.foursquare_id == self.foursquare_id
         assert inline_query_result_venue.foursquare_type == self.foursquare_type
+        assert inline_query_result_venue.google_place_id == self.google_place_id
+        assert inline_query_result_venue.google_place_type == self.google_place_type
         assert inline_query_result_venue.thumb_url == self.thumb_url
         assert inline_query_result_venue.thumb_width == self.thumb_width
         assert inline_query_result_venue.thumb_height == self.thumb_height
-        assert (inline_query_result_venue.input_message_content.to_dict()
-                == self.input_message_content.to_dict())
+        assert (
+            inline_query_result_venue.input_message_content.to_dict()
+            == self.input_message_content.to_dict()
+        )
         assert inline_query_result_venue.reply_markup.to_dict() == self.reply_markup.to_dict()
 
     def test_to_dict(self, inline_query_result_venue):
@@ -81,28 +95,48 @@ class TestInlineQueryResultVenue:
         assert inline_query_result_venue_dict['longitude'] == inline_query_result_venue.longitude
         assert inline_query_result_venue_dict['title'] == inline_query_result_venue.title
         assert inline_query_result_venue_dict['address'] == inline_query_result_venue.address
-        assert (inline_query_result_venue_dict['foursquare_id']
-                == inline_query_result_venue.foursquare_id)
-        assert (inline_query_result_venue_dict['foursquare_type']
-                == inline_query_result_venue.foursquare_type)
+        assert (
+            inline_query_result_venue_dict['foursquare_id']
+            == inline_query_result_venue.foursquare_id
+        )
+        assert (
+            inline_query_result_venue_dict['foursquare_type']
+            == inline_query_result_venue.foursquare_type
+        )
+        assert (
+            inline_query_result_venue_dict['google_place_id']
+            == inline_query_result_venue.google_place_id
+        )
+        assert (
+            inline_query_result_venue_dict['google_place_type']
+            == inline_query_result_venue.google_place_type
+        )
         assert inline_query_result_venue_dict['thumb_url'] == inline_query_result_venue.thumb_url
-        assert (inline_query_result_venue_dict['thumb_width']
-                == inline_query_result_venue.thumb_width)
-        assert (inline_query_result_venue_dict['thumb_height']
-                == inline_query_result_venue.thumb_height)
-        assert (inline_query_result_venue_dict['input_message_content']
-                == inline_query_result_venue.input_message_content.to_dict())
-        assert (inline_query_result_venue_dict['reply_markup']
-                == inline_query_result_venue.reply_markup.to_dict())
+        assert (
+            inline_query_result_venue_dict['thumb_width'] == inline_query_result_venue.thumb_width
+        )
+        assert (
+            inline_query_result_venue_dict['thumb_height']
+            == inline_query_result_venue.thumb_height
+        )
+        assert (
+            inline_query_result_venue_dict['input_message_content']
+            == inline_query_result_venue.input_message_content.to_dict()
+        )
+        assert (
+            inline_query_result_venue_dict['reply_markup']
+            == inline_query_result_venue.reply_markup.to_dict()
+        )
 
     def test_equality(self):
-        a = InlineQueryResultVenue(self.id_, self.longitude, self.latitude, self.title,
-                                   self.address)
-        b = InlineQueryResultVenue(self.id_, self.longitude, self.latitude, self.title,
-                                   self.address)
+        a = InlineQueryResultVenue(
+            self.id_, self.longitude, self.latitude, self.title, self.address
+        )
+        b = InlineQueryResultVenue(
+            self.id_, self.longitude, self.latitude, self.title, self.address
+        )
         c = InlineQueryResultVenue(self.id_, '', self.latitude, self.title, self.address)
-        d = InlineQueryResultVenue('', self.longitude, self.latitude, self.title,
-                                   self.address)
+        d = InlineQueryResultVenue('', self.longitude, self.latitude, self.title, self.address)
         e = InlineQueryResultVoice(self.id_, '', '')
 
         assert a == b

@@ -18,6 +18,8 @@
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 """This module contains an object that represents a Telegram ForceReply."""
 
+from typing import Any
+
 from telegram import ReplyMarkup
 
 
@@ -27,6 +29,9 @@ class ForceReply(ReplyMarkup):
     the user (act as if the user has selected the bot's message and tapped 'Reply'). This can be
     extremely useful if you want to create user-friendly step-by-step interfaces without having
     to sacrifice privacy mode.
+
+    Objects of this class are comparable in terms of equality. Two objects of this class are
+    considered equal, if their :attr:`selective` is equal.
 
     Attributes:
         force_reply (:obj:`True`): Shows reply interface to the user, as if they manually selected
@@ -45,8 +50,10 @@ class ForceReply(ReplyMarkup):
 
     """
 
-    def __init__(self, force_reply=True, selective=False, **kwargs):
+    def __init__(self, force_reply: bool = True, selective: bool = False, **_kwargs: Any):
         # Required
         self.force_reply = bool(force_reply)
         # Optionals
         self.selective = bool(selective)
+
+        self._id_attrs = (self.selective,)

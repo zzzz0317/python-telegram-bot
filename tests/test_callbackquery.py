@@ -24,14 +24,17 @@ from telegram import CallbackQuery, User, Message, Chat, Audio
 
 @pytest.fixture(scope='class', params=['message', 'inline'])
 def callback_query(bot, request):
-    cbq = CallbackQuery(TestCallbackQuery.id_,
-                        TestCallbackQuery.from_user,
-                        TestCallbackQuery.chat_instance,
-                        data=TestCallbackQuery.data,
-                        game_short_name=TestCallbackQuery.game_short_name,
-                        bot=bot)
+    cbq = CallbackQuery(
+        TestCallbackQuery.id_,
+        TestCallbackQuery.from_user,
+        TestCallbackQuery.chat_instance,
+        data=TestCallbackQuery.data,
+        game_short_name=TestCallbackQuery.game_short_name,
+        bot=bot,
+    )
     if request.param == 'message':
         cbq.message = TestCallbackQuery.message
+        cbq.message.bot = bot
     else:
         cbq.inline_message_id = TestCallbackQuery.inline_message_id
     return cbq
@@ -41,27 +44,27 @@ class TestCallbackQuery:
     id_ = 'id'
     from_user = User(1, 'test_user', False)
     chat_instance = 'chat_instance'
-    message = Message(3, User(5, 'bot', False), None, Chat(4, 'private'))
+    message = Message(3, None, Chat(4, 'private'), from_user=User(5, 'bot', False))
     data = 'data'
     inline_message_id = 'inline_message_id'
     game_short_name = 'the_game'
 
     def test_de_json(self, bot):
-        json_dict = {'id': self.id_,
-                     'from': self.from_user.to_dict(),
-                     'chat_instance': self.chat_instance,
-                     'message': self.message.to_dict(),
-                     'data': self.data,
-                     'inline_message_id': self.inline_message_id,
-                     'game_short_name': self.game_short_name,
-                     'default_quote': True}
+        json_dict = {
+            'id': self.id_,
+            'from': self.from_user.to_dict(),
+            'chat_instance': self.chat_instance,
+            'message': self.message.to_dict(),
+            'data': self.data,
+            'inline_message_id': self.inline_message_id,
+            'game_short_name': self.game_short_name,
+        }
         callback_query = CallbackQuery.de_json(json_dict, bot)
 
         assert callback_query.id == self.id_
         assert callback_query.from_user == self.from_user
         assert callback_query.chat_instance == self.chat_instance
         assert callback_query.message == self.message
-        assert callback_query.message.default_quote is True
         assert callback_query.data == self.data
         assert callback_query.inline_message_id == self.inline_message_id
         assert callback_query.game_short_name == self.game_short_name
@@ -84,7 +87,7 @@ class TestCallbackQuery:
         def test(*args, **kwargs):
             return args[0] == callback_query.id
 
-        monkeypatch.setattr(callback_query.bot, 'answerCallbackQuery', test)
+        monkeypatch.setattr(callback_query.bot, 'answer_callback_query', test)
         # TODO: PEP8
         assert callback_query.answer()
 
@@ -207,6 +210,59 @@ class TestCallbackQuery:
         monkeypatch.setattr(callback_query.bot, 'get_game_high_scores', test)
         assert callback_query.get_game_high_scores(user_id=1)
         assert callback_query.get_game_high_scores(1)
+
+    def test_delete_message(self, monkeypatch, callback_query):
+        if callback_query.inline_message_id:
+            pytest.skip("Can't delete inline messages")
+
+        def make_assertion(*args, **kwargs):
+            id_ = kwargs['chat_id'] == callback_query.message.chat_id
+            message = kwargs['message_id'] == callback_query.message.message_id
+            return id_ and message
+
+        monkeypatch.setattr(callback_query.bot, 'delete_message', make_assertion)
+        assert callback_query.delete_message()
+
+    def test_pin_message(self, monkeypatch, callback_query):
+        if callback_query.inline_message_id:
+            pytest.skip("Can't pin inline messages")
+
+        def make_assertion(*args, **kwargs):
+            _id = callback_query.message.chat_id
+            try:
+                return kwargs['chat_id'] == _id
+            except KeyError:
+                return args[0] == _id
+
+        monkeypatch.setattr(callback_query.bot, 'pin_chat_message', make_assertion)
+        assert callback_query.pin_message()
+
+    def test_unpin_message(self, monkeypatch, callback_query):
+        if callback_query.inline_message_id:
+            pytest.skip("Can't unpin inline messages")
+
+        def make_assertion(*args, **kwargs):
+            _id = callback_query.message.chat_id
+            try:
+                return kwargs['chat_id'] == _id
+            except KeyError:
+                return args[0] == _id
+
+        monkeypatch.setattr(callback_query.bot, 'unpin_chat_message', make_assertion)
+        assert callback_query.unpin_message()
+
+    def test_copy_message(self, monkeypatch, callback_query):
+        if callback_query.inline_message_id:
+            pytest.skip("Can't copy inline messages")
+
+        def make_assertion(*args, **kwargs):
+            id_ = kwargs['from_chat_id'] == callback_query.message.chat_id
+            chat_id = kwargs['chat_id'] == 1
+            message = kwargs['message_id'] == callback_query.message.message_id
+            return id_ and message and chat_id
+
+        monkeypatch.setattr(callback_query.bot, 'copy_message', make_assertion)
+        assert callback_query.copy_message(1)
 
     def test_equality(self):
         a = CallbackQuery(self.id_, self.from_user, 'chat')

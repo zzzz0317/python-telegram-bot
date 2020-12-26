@@ -25,11 +25,22 @@ from threading import Thread, Event
 from time import sleep
 
 import pytest
+import pytz
 
-from telegram import (Bot, Message, User, Chat, MessageEntity, Update,
-                      InlineQuery, CallbackQuery, ShippingQuery, PreCheckoutQuery,
-                      ChosenInlineResult)
-from telegram.ext import Dispatcher, JobQueue, Updater, BaseFilter, Defaults
+from telegram import (
+    Bot,
+    Message,
+    User,
+    Chat,
+    MessageEntity,
+    Update,
+    InlineQuery,
+    CallbackQuery,
+    ShippingQuery,
+    PreCheckoutQuery,
+    ChosenInlineResult,
+)
+from telegram.ext import Dispatcher, JobQueue, Updater, MessageFilter, Defaults, UpdateFilter
 from telegram.error import BadRequest
 from tests.bots import get_bot
 
@@ -54,11 +65,25 @@ def bot(bot_info):
 
 
 DEFAULT_BOTS = {}
+
+
 @pytest.fixture(scope='function')
 def default_bot(request, bot_info):
     param = request.param if hasattr(request, 'param') else {}
 
     defaults = Defaults(**param)
+    default_bot = DEFAULT_BOTS.get(defaults)
+    if default_bot:
+        return default_bot
+    else:
+        default_bot = make_bot(bot_info, **{'defaults': defaults})
+        DEFAULT_BOTS[defaults] = default_bot
+        return default_bot
+
+
+@pytest.fixture(scope='function')
+def tz_bot(timezone, bot_info):
+    defaults = Defaults(tzinfo=timezone)
     default_bot = DEFAULT_BOTS.get(defaults)
     if default_bot:
         return default_bot
@@ -142,7 +167,7 @@ def cdp(dp):
 
 @pytest.fixture(scope='function')
 def updater(bot):
-    up = Updater(bot=bot, workers=2)
+    up = Updater(bot=bot, workers=2, use_context=False)
     yield up
     if up.running:
         up.stop()
@@ -182,13 +207,15 @@ def make_message(text, **kwargs):
     :param text: (str) message text
     :return: a (fake) ``telegram.Message``
     """
-    return Message(message_id=1,
-                   from_user=kwargs.pop('user', User(id=1, first_name='', is_bot=False)),
-                   date=kwargs.pop('date', DATE),
-                   chat=kwargs.pop('chat', Chat(id=1, type='')),
-                   text=text,
-                   bot=kwargs.pop('bot', make_bot(get_bot())),
-                   **kwargs)
+    return Message(
+        message_id=1,
+        from_user=kwargs.pop('user', User(id=1, first_name='', is_bot=False)),
+        date=kwargs.pop('date', DATE),
+        chat=kwargs.pop('chat', Chat(id=1, type='')),
+        text=text,
+        bot=kwargs.pop('bot', make_bot(get_bot())),
+        **kwargs,
+    )
 
 
 def make_command_message(text, **kwargs):
@@ -204,9 +231,15 @@ def make_command_message(text, **kwargs):
     """
 
     match = re.search(CMD_PATTERN, text)
-    entities = [MessageEntity(type=MessageEntity.BOT_COMMAND,
-                              offset=match.start(0),
-                              length=len(match.group(0)))] if match else []
+    entities = (
+        [
+            MessageEntity(
+                type=MessageEntity.BOT_COMMAND, offset=match.start(0), length=len(match.group(0))
+            )
+        ]
+        if match
+        else []
+    )
 
     return make_message(text, entities=entities, **kwargs)
 
@@ -238,20 +271,24 @@ def make_command_update(message, edited=False, **kwargs):
     return make_message_update(message, make_command_message, edited, **kwargs)
 
 
-@pytest.fixture(scope='function')
-def mock_filter():
-    class MockFilter(BaseFilter):
+@pytest.fixture(
+    scope='class',
+    params=[{'class': MessageFilter}, {'class': UpdateFilter}],
+    ids=['MessageFilter', 'UpdateFilter'],
+)
+def mock_filter(request):
+    class MockFilter(request.param['class']):
         def __init__(self):
             self.tested = False
 
-        def filter(self, message):
+        def filter(self, _):
             self.tested = True
 
     return MockFilter()
 
 
 def get_false_update_fixture_decorator_params():
-    message = Message(1, User(1, '', False), DATE, Chat(1, ''), text='test')
+    message = Message(1, DATE, Chat(1, ''), from_user=User(1, '', False), text='test')
     params = [
         {'callback_query': CallbackQuery(1, User(1, '', False), 'chat', message=message)},
         {'channel_post': message},
@@ -260,7 +297,7 @@ def get_false_update_fixture_decorator_params():
         {'chosen_inline_result': ChosenInlineResult('id', User(1, '', False), '')},
         {'shipping_query': ShippingQuery('id', User(1, '', False), '', None)},
         {'pre_checkout_query': PreCheckoutQuery('id', User(1, '', False), '', 0, '')},
-        {'callback_query': CallbackQuery(1, User(1, '', False), 'chat')}
+        {'callback_query': CallbackQuery(1, User(1, '', False), 'chat')},
     ]
     ids = tuple(key for kwargs in params for key in kwargs)
     return {'params': params, 'ids': ids}
@@ -271,14 +308,14 @@ def false_update(request):
     return Update(update_id=1, **request.param)
 
 
-@pytest.fixture(params=[1, 2], ids=lambda h: 'UTC +{hour:0>2}:00'.format(hour=h))
-def utc_offset(request):
-    return datetime.timedelta(hours=request.param)
+@pytest.fixture(params=['Europe/Berlin', 'Asia/Singapore', 'UTC'])
+def tzinfo(request):
+    return pytz.timezone(request.param)
 
 
 @pytest.fixture()
-def timezone(utc_offset):
-    return datetime.timezone(utc_offset)
+def timezone(tzinfo):
+    return tzinfo
 
 
 def expect_bad_request(func, message, reason):
@@ -299,6 +336,6 @@ def expect_bad_request(func, message, reason):
         return func()
     except BadRequest as e:
         if message in str(e):
-            pytest.xfail('{}. {}'.format(reason, e))
+            pytest.xfail(f'{reason}. {e}')
         else:
             raise e

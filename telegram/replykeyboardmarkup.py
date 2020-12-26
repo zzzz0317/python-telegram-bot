@@ -18,11 +18,17 @@
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 """This module contains an object that represents a Telegram ReplyKeyboardMarkup."""
 
-from telegram import ReplyMarkup
+from typing import Any, List, Union
+
+from telegram import KeyboardButton, ReplyMarkup
+from telegram.utils.types import JSONDict
 
 
 class ReplyKeyboardMarkup(ReplyMarkup):
     """This object represents a custom keyboard with reply options.
+
+    Objects of this class are comparable in terms of equality. Two objects of this class are
+    considered equal, if their the size of :attr:`keyboard` and all the buttons are equal.
 
     Attributes:
         keyboard (List[List[:class:`telegram.KeyboardButton` | :obj:`str`]]): Array of button rows.
@@ -59,40 +65,53 @@ class ReplyKeyboardMarkup(ReplyMarkup):
 
     """
 
-    def __init__(self,
-                 keyboard,
-                 resize_keyboard=False,
-                 one_time_keyboard=False,
-                 selective=False,
-                 **kwargs):
+    def __init__(
+        self,
+        keyboard: List[List[Union[str, KeyboardButton]]],
+        resize_keyboard: bool = False,
+        one_time_keyboard: bool = False,
+        selective: bool = False,
+        **_kwargs: Any,
+    ):
         # Required
-        self.keyboard = keyboard
+        self.keyboard = []
+        for row in keyboard:
+            button_row = []
+            for button in row:
+                if isinstance(button, KeyboardButton):
+                    button_row.append(button)  # telegram.KeyboardButton
+                else:
+                    button_row.append(KeyboardButton(button))  # str
+            self.keyboard.append(button_row)
+
         # Optionals
         self.resize_keyboard = bool(resize_keyboard)
         self.one_time_keyboard = bool(one_time_keyboard)
         self.selective = bool(selective)
 
-    def to_dict(self):
+    def to_dict(self) -> JSONDict:
         data = super().to_dict()
 
         data['keyboard'] = []
         for row in self.keyboard:
-            r = []
+            button_row: List[Union[JSONDict, str]] = []
             for button in row:
-                if hasattr(button, 'to_dict'):
-                    r.append(button.to_dict())  # telegram.KeyboardButton
+                if isinstance(button, KeyboardButton):
+                    button_row.append(button.to_dict())  # telegram.KeyboardButton
                 else:
-                    r.append(button)  # str
-            data['keyboard'].append(r)
+                    button_row.append(button)  # str
+            data['keyboard'].append(button_row)
         return data
 
     @classmethod
-    def from_button(cls,
-                    button,
-                    resize_keyboard=False,
-                    one_time_keyboard=False,
-                    selective=False,
-                    **kwargs):
+    def from_button(
+        cls,
+        button: Union[KeyboardButton, str],
+        resize_keyboard: bool = False,
+        one_time_keyboard: bool = False,
+        selective: bool = False,
+        **kwargs: Any,
+    ) -> 'ReplyKeyboardMarkup':
         """Shortcut for::
 
             ReplyKeyboardMarkup([[button]], **kwargs)
@@ -121,19 +140,23 @@ class ReplyKeyboardMarkup(ReplyMarkup):
                 Defaults to :obj:`False`.
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
         """
-        return cls([[button]],
-                   resize_keyboard=resize_keyboard,
-                   one_time_keyboard=one_time_keyboard,
-                   selective=selective,
-                   **kwargs)
+        return cls(
+            [[button]],
+            resize_keyboard=resize_keyboard,
+            one_time_keyboard=one_time_keyboard,
+            selective=selective,
+            **kwargs,
+        )
 
     @classmethod
-    def from_row(cls,
-                 button_row,
-                 resize_keyboard=False,
-                 one_time_keyboard=False,
-                 selective=False,
-                 **kwargs):
+    def from_row(
+        cls,
+        button_row: List[Union[str, KeyboardButton]],
+        resize_keyboard: bool = False,
+        one_time_keyboard: bool = False,
+        selective: bool = False,
+        **kwargs: Any,
+    ) -> 'ReplyKeyboardMarkup':
         """Shortcut for::
 
             ReplyKeyboardMarkup([button_row], **kwargs)
@@ -163,19 +186,23 @@ class ReplyKeyboardMarkup(ReplyMarkup):
             **kwargs (:obj:`dict`): Arbitrary keyword arguments.
 
         """
-        return cls([button_row],
-                   resize_keyboard=resize_keyboard,
-                   one_time_keyboard=one_time_keyboard,
-                   selective=selective,
-                   **kwargs)
+        return cls(
+            [button_row],
+            resize_keyboard=resize_keyboard,
+            one_time_keyboard=one_time_keyboard,
+            selective=selective,
+            **kwargs,
+        )
 
     @classmethod
-    def from_column(cls,
-                    button_column,
-                    resize_keyboard=False,
-                    one_time_keyboard=False,
-                    selective=False,
-                    **kwargs):
+    def from_column(
+        cls,
+        button_column: List[Union[str, KeyboardButton]],
+        resize_keyboard: bool = False,
+        one_time_keyboard: bool = False,
+        selective: bool = False,
+        **kwargs: Any,
+    ) -> 'ReplyKeyboardMarkup':
         """Shortcut for::
 
             ReplyKeyboardMarkup([[button] for button in button_column], **kwargs)
@@ -206,8 +233,33 @@ class ReplyKeyboardMarkup(ReplyMarkup):
 
         """
         button_grid = [[button] for button in button_column]
-        return cls(button_grid,
-                   resize_keyboard=resize_keyboard,
-                   one_time_keyboard=one_time_keyboard,
-                   selective=selective,
-                   **kwargs)
+        return cls(
+            button_grid,
+            resize_keyboard=resize_keyboard,
+            one_time_keyboard=one_time_keyboard,
+            selective=selective,
+            **kwargs,
+        )
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            if len(self.keyboard) != len(other.keyboard):
+                return False
+            for idx, row in enumerate(self.keyboard):
+                if len(row) != len(other.keyboard[idx]):
+                    return False
+                for jdx, button in enumerate(row):
+                    if button != other.keyboard[idx][jdx]:
+                        return False
+            return True
+        return super().__eq__(other)
+
+    def __hash__(self) -> int:
+        return hash(
+            (
+                tuple(tuple(button for button in row) for row in self.keyboard),
+                self.resize_keyboard,
+                self.one_time_keyboard,
+                self.selective,
+            )
+        )

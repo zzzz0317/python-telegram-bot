@@ -18,11 +18,20 @@
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 """This module contains an object that represents a Telegram PreCheckoutQuery."""
 
-from telegram import TelegramObject, User, OrderInfo
+from typing import TYPE_CHECKING, Any, Optional
+
+from telegram import OrderInfo, TelegramObject, User
+from telegram.utils.types import JSONDict
+
+if TYPE_CHECKING:
+    from telegram import Bot
 
 
 class PreCheckoutQuery(TelegramObject):
     """This object contains information about an incoming pre-checkout query.
+
+    Objects of this class are comparable in terms of equality. Two objects of this class are
+    considered equal, if their :attr:`id` is equal.
 
     Note:
         * In Python `from` is a reserved word, use `from_user` instead.
@@ -57,17 +66,19 @@ class PreCheckoutQuery(TelegramObject):
 
     """
 
-    def __init__(self,
-                 id,
-                 from_user,
-                 currency,
-                 total_amount,
-                 invoice_payload,
-                 shipping_option_id=None,
-                 order_info=None,
-                 bot=None,
-                 **kwargs):
-        self.id = id
+    def __init__(
+        self,
+        id: str,  # pylint: disable=W0622
+        from_user: User,
+        currency: str,
+        total_amount: int,
+        invoice_payload: str,
+        shipping_option_id: str = None,
+        order_info: OrderInfo = None,
+        bot: 'Bot' = None,
+        **_kwargs: Any,
+    ):
+        self.id = id  # pylint: disable=C0103
         self.from_user = from_user
         self.currency = currency
         self.total_amount = total_amount
@@ -80,18 +91,18 @@ class PreCheckoutQuery(TelegramObject):
         self._id_attrs = (self.id,)
 
     @classmethod
-    def de_json(cls, data, bot):
+    def de_json(cls, data: Optional[JSONDict], bot: 'Bot') -> Optional['PreCheckoutQuery']:
+        data = cls.parse_data(data)
+
         if not data:
             return None
-
-        data = super().de_json(data, bot)
 
         data['from_user'] = User.de_json(data.pop('from'), bot)
         data['order_info'] = OrderInfo.de_json(data.get('order_info'), bot)
 
         return cls(bot=bot, **data)
 
-    def answer(self, *args, **kwargs):
+    def answer(self, *args: Any, **kwargs: Any) -> bool:
         """Shortcut for::
 
             bot.answer_pre_checkout_query(update.pre_checkout_query.id, *args, **kwargs)

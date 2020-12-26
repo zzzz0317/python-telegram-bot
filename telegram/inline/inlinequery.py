@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# pylint: disable=R0902,R0912,R0913
+# pylint: disable=R0902,R0913
 #
 # A library that provides a Python interface to the Telegram Bot API
 # Copyright (C) 2015-2020
@@ -19,13 +19,22 @@
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 """This module contains an object that represents a Telegram InlineQuery."""
 
-from telegram import TelegramObject, User, Location
+from typing import TYPE_CHECKING, Any, Optional
+
+from telegram import Location, TelegramObject, User
+from telegram.utils.types import JSONDict
+
+if TYPE_CHECKING:
+    from telegram import Bot
 
 
 class InlineQuery(TelegramObject):
     """
     This object represents an incoming inline query. When the user sends an empty query, your bot
     could return some default or trending results.
+
+    Objects of this class are comparable in terms of equality. Two objects of this class are
+    considered equal, if their :attr:`id` is equal.
 
     Note:
         * In Python `from` is a reserved word, use `from_user` instead.
@@ -50,9 +59,18 @@ class InlineQuery(TelegramObject):
 
     """
 
-    def __init__(self, id, from_user, query, offset, location=None, bot=None, **kwargs):
+    def __init__(
+        self,
+        id: str,  # pylint: disable=W0622
+        from_user: User,
+        query: str,
+        offset: str,
+        location: Location = None,
+        bot: 'Bot' = None,
+        **_kwargs: Any,
+    ):
         # Required
-        self.id = id
+        self.id = id  # pylint: disable=C0103
         self.from_user = from_user
         self.query = query
         self.offset = offset
@@ -64,8 +82,8 @@ class InlineQuery(TelegramObject):
         self._id_attrs = (self.id,)
 
     @classmethod
-    def de_json(cls, data, bot):
-        data = super().de_json(data, bot)
+    def de_json(cls, data: Optional[JSONDict], bot: 'Bot') -> Optional['InlineQuery']:
+        data = cls.parse_data(data)
 
         if not data:
             return None
@@ -75,7 +93,7 @@ class InlineQuery(TelegramObject):
 
         return cls(bot=bot, **data)
 
-    def answer(self, *args, auto_pagination=False, **kwargs):
+    def answer(self, *args: Any, auto_pagination: bool = False, **kwargs: Any) -> bool:
         """Shortcut for::
 
             bot.answer_inline_query(update.inline_query.id,
@@ -111,8 +129,5 @@ class InlineQuery(TelegramObject):
 
         """
         return self.bot.answer_inline_query(
-            self.id,
-            *args,
-            current_offset=self.offset if auto_pagination else None,
-            **kwargs
+            self.id, *args, current_offset=self.offset if auto_pagination else None, **kwargs
         )

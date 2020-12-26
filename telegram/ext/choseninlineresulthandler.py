@@ -18,11 +18,16 @@
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 """This module contains the ChosenInlineResultHandler class."""
 
+from typing import Optional, TypeVar, Union, Any
+
 from telegram import Update
+
 from .handler import Handler
 
+RT = TypeVar('RT')
 
-class ChosenInlineResultHandler(Handler):
+
+class ChosenInlineResultHandler(Handler[Update]):
     """Handler class to handle Telegram updates that contain a chosen inline result.
 
     Attributes:
@@ -80,11 +85,11 @@ class ChosenInlineResultHandler(Handler):
 
     """
 
-    def check_update(self, update):
+    def check_update(self, update: Any) -> Optional[Union[bool, object]]:
         """Determines whether an update should be passed to this handlers :attr:`callback`.
 
         Args:
-            update (:class:`telegram.Update`): Incoming telegram update.
+            update (:class:`telegram.Update` | :obj:`object`): Incoming update.
 
         Returns:
             :obj:`bool`

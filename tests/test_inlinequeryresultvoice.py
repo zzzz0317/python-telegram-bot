@@ -19,8 +19,14 @@
 
 import pytest
 
-from telegram import (InlineKeyboardButton, InputTextMessageContent, InlineQueryResultAudio,
-                      InlineQueryResultVoice, InlineKeyboardMarkup)
+from telegram import (
+    InlineKeyboardButton,
+    InputTextMessageContent,
+    InlineQueryResultAudio,
+    InlineQueryResultVoice,
+    InlineKeyboardMarkup,
+    MessageEntity,
+)
 
 
 @pytest.fixture(scope='class')
@@ -33,8 +39,10 @@ def inline_query_result_voice():
         voice_duration=TestInlineQueryResultVoice.voice_duration,
         caption=TestInlineQueryResultVoice.caption,
         parse_mode=TestInlineQueryResultVoice.parse_mode,
+        caption_entities=TestInlineQueryResultVoice.caption_entities,
         input_message_content=TestInlineQueryResultVoice.input_message_content,
-        reply_markup=TestInlineQueryResultVoice.reply_markup)
+        reply_markup=TestInlineQueryResultVoice.reply_markup,
+    )
 
 
 class TestInlineQueryResultVoice:
@@ -45,6 +53,7 @@ class TestInlineQueryResultVoice:
     voice_duration = 'voice_duration'
     caption = 'caption'
     parse_mode = 'HTML'
+    caption_entities = [MessageEntity(MessageEntity.ITALIC, 0, 7)]
     input_message_content = InputTextMessageContent('input_message_content')
     reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton('reply_markup')]])
 
@@ -56,8 +65,11 @@ class TestInlineQueryResultVoice:
         assert inline_query_result_voice.voice_duration == self.voice_duration
         assert inline_query_result_voice.caption == self.caption
         assert inline_query_result_voice.parse_mode == self.parse_mode
-        assert (inline_query_result_voice.input_message_content.to_dict()
-                == self.input_message_content.to_dict())
+        assert inline_query_result_voice.caption_entities == self.caption_entities
+        assert (
+            inline_query_result_voice.input_message_content.to_dict()
+            == self.input_message_content.to_dict()
+        )
         assert inline_query_result_voice.reply_markup.to_dict() == self.reply_markup.to_dict()
 
     def test_to_dict(self, inline_query_result_voice):
@@ -68,14 +80,23 @@ class TestInlineQueryResultVoice:
         assert inline_query_result_voice_dict['id'] == inline_query_result_voice.id
         assert inline_query_result_voice_dict['voice_url'] == inline_query_result_voice.voice_url
         assert inline_query_result_voice_dict['title'] == inline_query_result_voice.title
-        assert (inline_query_result_voice_dict['voice_duration']
-                == inline_query_result_voice.voice_duration)
+        assert (
+            inline_query_result_voice_dict['voice_duration']
+            == inline_query_result_voice.voice_duration
+        )
         assert inline_query_result_voice_dict['caption'] == inline_query_result_voice.caption
         assert inline_query_result_voice_dict['parse_mode'] == inline_query_result_voice.parse_mode
-        assert (inline_query_result_voice_dict['input_message_content']
-                == inline_query_result_voice.input_message_content.to_dict())
-        assert (inline_query_result_voice_dict['reply_markup']
-                == inline_query_result_voice.reply_markup.to_dict())
+        assert inline_query_result_voice_dict['caption_entities'] == [
+            ce.to_dict() for ce in inline_query_result_voice.caption_entities
+        ]
+        assert (
+            inline_query_result_voice_dict['input_message_content']
+            == inline_query_result_voice.input_message_content.to_dict()
+        )
+        assert (
+            inline_query_result_voice_dict['reply_markup']
+            == inline_query_result_voice.reply_markup.to_dict()
+        )
 
     def test_equality(self):
         a = InlineQueryResultVoice(self.id_, self.voice_url, self.title)

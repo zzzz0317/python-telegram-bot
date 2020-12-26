@@ -18,6 +18,7 @@
 # You should have received a copy of the GNU Lesser Public License
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 import os
+from pathlib import Path
 from time import sleep
 
 import pytest
@@ -56,8 +57,10 @@ def animated_sticker(bot, chat_id):
 class TestSticker:
     # sticker_file_url = 'https://python-telegram-bot.org/static/testfiles/telegram.webp'
     # Serving sticker from gh since our server sends wrong content_type
-    sticker_file_url = ('https://github.com/python-telegram-bot/python-telegram-bot/blob/master'
-                        '/tests/data/telegram.webp?raw=true')
+    sticker_file_url = (
+        'https://github.com/python-telegram-bot/python-telegram-bot/blob/master'
+        '/tests/data/telegram.webp?raw=true'
+    )
 
     emoji = '💪'
     width = 510
@@ -180,7 +183,7 @@ class TestSticker:
             'is_animated': self.is_animated,
             'thumb': sticker.thumb.to_dict(),
             'emoji': self.emoji,
-            'file_size': self.file_size
+            'file_size': self.file_size,
         }
         json_sticker = Sticker.de_json(json_dict, bot)
 
@@ -194,12 +197,61 @@ class TestSticker:
         assert json_sticker.thumb == sticker.thumb
 
     def test_send_with_sticker(self, monkeypatch, bot, chat_id, sticker):
-        def test(_, url, data, **kwargs):
+        def test(url, data, **kwargs):
             return data['sticker'] == sticker.file_id
 
-        monkeypatch.setattr('telegram.utils.request.Request.post', test)
+        monkeypatch.setattr(bot.request, 'post', test)
         message = bot.send_sticker(sticker=sticker, chat_id=chat_id)
         assert message
+
+    def test_send_sticker_local_files(self, monkeypatch, bot, chat_id):
+        # For just test that the correct paths are passed as we have no local bot API set up
+        test_flag = False
+        expected = (Path.cwd() / 'tests/data/telegram.jpg/').as_uri()
+        file = 'tests/data/telegram.jpg'
+
+        def make_assertion(_, data, *args, **kwargs):
+            nonlocal test_flag
+            test_flag = data.get('sticker') == expected
+
+        monkeypatch.setattr(bot, '_post', make_assertion)
+        bot.send_sticker(chat_id, file)
+        assert test_flag
+
+    @flaky(3, 1)
+    @pytest.mark.timeout(10)
+    @pytest.mark.parametrize(
+        'default_bot,custom',
+        [
+            ({'allow_sending_without_reply': True}, None),
+            ({'allow_sending_without_reply': False}, None),
+            ({'allow_sending_without_reply': False}, True),
+        ],
+        indirect=['default_bot'],
+    )
+    def test_send_sticker_default_allow_sending_without_reply(
+        self, default_bot, chat_id, sticker, custom
+    ):
+        reply_to_message = default_bot.send_message(chat_id, 'test')
+        reply_to_message.delete()
+        if custom is not None:
+            message = default_bot.send_sticker(
+                chat_id,
+                sticker,
+                allow_sending_without_reply=custom,
+                reply_to_message_id=reply_to_message.message_id,
+            )
+            assert message.reply_to_message is None
+        elif default_bot.defaults.allow_sending_without_reply:
+            message = default_bot.send_sticker(
+                chat_id, sticker, reply_to_message_id=reply_to_message.message_id
+            )
+            assert message.reply_to_message is None
+        else:
+            with pytest.raises(BadRequest, match='message not found'):
+                default_bot.send_sticker(
+                    chat_id, sticker, reply_to_message_id=reply_to_message.message_id
+                )
 
     def test_to_dict(self, sticker):
         sticker_dict = sticker.to_dict()
@@ -230,14 +282,15 @@ class TestSticker:
             bot.send_sticker(chat_id)
 
     def test_equality(self, sticker):
-        a = Sticker(sticker.file_id, sticker.file_unique_id, self.width,
-                    self.height, self.is_animated)
-        b = Sticker('', sticker.file_unique_id, self.width,
-                    self.height, self.is_animated)
+        a = Sticker(
+            sticker.file_id, sticker.file_unique_id, self.width, self.height, self.is_animated
+        )
+        b = Sticker('', sticker.file_unique_id, self.width, self.height, self.is_animated)
         c = Sticker(sticker.file_id, sticker.file_unique_id, 0, 0, False)
         d = Sticker('', '', self.width, self.height, self.is_animated)
-        e = PhotoSize(sticker.file_id, sticker.file_unique_id, self.width,
-                      self.height, self.is_animated)
+        e = PhotoSize(
+            sticker.file_id, sticker.file_unique_id, self.width, self.height, self.is_animated
+        )
 
         assert a == b
         assert hash(a) == hash(b)
@@ -255,7 +308,7 @@ class TestSticker:
 
 @pytest.fixture(scope='function')
 def sticker_set(bot):
-    ss = bot.get_sticker_set('test_by_{}'.format(bot.username))
+    ss = bot.get_sticker_set(f'test_by_{bot.username}')
     if len(ss.stickers) > 100:
         try:
             for i in range(1, 50):
@@ -267,7 +320,7 @@ def sticker_set(bot):
 
 @pytest.fixture(scope='function')
 def animated_sticker_set(bot):
-    ss = bot.get_sticker_set('animated_test_by_{}'.format(bot.username))
+    ss = bot.get_sticker_set(f'animated_test_by_{bot.username}')
     if len(ss.stickers) > 100:
         try:
             for i in range(1, 50):
@@ -292,14 +345,14 @@ class TestStickerSet:
     name = 'NOTAREALNAME'
 
     def test_de_json(self, bot, sticker):
-        name = 'test_by_{}'.format(bot.username)
+        name = f'test_by_{bot.username}'
         json_dict = {
             'name': name,
             'title': self.title,
             'is_animated': self.is_animated,
             'contains_masks': self.contains_masks,
             'stickers': [x.to_dict() for x in self.stickers],
-            'thumb': sticker.thumb.to_dict()
+            'thumb': sticker.thumb.to_dict(),
         }
         sticker_set = StickerSet.de_json(json_dict, bot)
 
@@ -316,20 +369,27 @@ class TestStickerSet:
         with open('tests/data/telegram_sticker.png', 'rb') as f:
             file = bot.upload_sticker_file(95205500, f)
         assert file
-        assert bot.add_sticker_to_set(chat_id, 'test_by_{}'.format(bot.username),
-                                      png_sticker=file.file_id, emojis='😄')
+        assert bot.add_sticker_to_set(
+            chat_id, f'test_by_{bot.username}', png_sticker=file.file_id, emojis='😄'
+        )
         # Also test with file input and mask
-        assert bot.add_sticker_to_set(chat_id, 'test_by_{}'.format(bot.username),
-                                      png_sticker=sticker_file, emojis='😄',
-                                      mask_position=MaskPosition(MaskPosition.EYES, -1, 1, 2))
+        assert bot.add_sticker_to_set(
+            chat_id,
+            f'test_by_{bot.username}',
+            png_sticker=sticker_file,
+            emojis='😄',
+            mask_position=MaskPosition(MaskPosition.EYES, -1, 1, 2),
+        )
 
     @flaky(3, 1)
     @pytest.mark.timeout(10)
     def test_bot_methods_1_tgs(self, bot, chat_id):
         assert bot.add_sticker_to_set(
-            chat_id, 'animated_test_by_{}'.format(bot.username),
+            chat_id,
+            f'animated_test_by_{bot.username}',
             tgs_sticker=open('tests/data/telegram_animated_sticker.tgs', 'rb'),
-            emojis='😄')
+            emojis='😄',
+        )
 
     def test_sticker_set_to_dict(self, sticker_set):
         sticker_set_dict = sticker_set.to_dict()
@@ -357,19 +417,20 @@ class TestStickerSet:
     @pytest.mark.timeout(10)
     def test_bot_methods_3_png(self, bot, chat_id, sticker_set_thumb_file):
         sleep(1)
-        assert bot.set_sticker_set_thumb('test_by_{}'.format(bot.username), chat_id,
-                                         sticker_set_thumb_file)
+        assert bot.set_sticker_set_thumb(
+            f'test_by_{bot.username}', chat_id, sticker_set_thumb_file
+        )
 
     @flaky(10, 1)
     @pytest.mark.timeout(10)
     def test_bot_methods_3_tgs(self, bot, chat_id, animated_sticker_file, animated_sticker_set):
         sleep(1)
-        assert bot.set_sticker_set_thumb('animated_test_by_{}'.format(bot.username), chat_id,
-                                         animated_sticker_file)
+        assert bot.set_sticker_set_thumb(
+            f'animated_test_by_{bot.username}', chat_id, animated_sticker_file
+        )
         file_id = animated_sticker_set.stickers[-1].file_id
         # also test with file input and mask
-        assert bot.set_sticker_set_thumb('animated_test_by_{}'.format(bot.username), chat_id,
-                                         file_id)
+        assert bot.set_sticker_set_thumb(f'animated_test_by_{bot.username}', chat_id, file_id)
 
     @flaky(10, 1)
     @pytest.mark.timeout(10)
@@ -384,6 +445,64 @@ class TestStickerSet:
         sleep(1)
         file_id = animated_sticker_set.stickers[-1].file_id
         assert bot.delete_sticker_from_set(file_id)
+
+    def test_upload_sticker_file_local_files(self, monkeypatch, bot, chat_id):
+        # For just test that the correct paths are passed as we have no local bot API set up
+        test_flag = False
+        expected = (Path.cwd() / 'tests/data/telegram.jpg/').as_uri()
+        file = 'tests/data/telegram.jpg'
+
+        def make_assertion(_, data, *args, **kwargs):
+            nonlocal test_flag
+            test_flag = data.get('png_sticker') == expected
+
+        monkeypatch.setattr(bot, '_post', make_assertion)
+        bot.upload_sticker_file(chat_id, file)
+        assert test_flag
+
+    def test_create_new_sticker_set_local_files(self, monkeypatch, bot, chat_id):
+        # For just test that the correct paths are passed as we have no local bot API set up
+        test_flag = False
+        expected = (Path.cwd() / 'tests/data/telegram.jpg/').as_uri()
+        file = 'tests/data/telegram.jpg'
+
+        def make_assertion(_, data, *args, **kwargs):
+            nonlocal test_flag
+            test_flag = data.get('png_sticker') == expected and data.get('tgs_sticker') == expected
+
+        monkeypatch.setattr(bot, '_post', make_assertion)
+        bot.create_new_sticker_set(
+            chat_id, 'name', 'title', 'emoji', png_sticker=file, tgs_sticker=file
+        )
+        assert test_flag
+
+    def test_add_sticker_to_set_local_files(self, monkeypatch, bot, chat_id):
+        # For just test that the correct paths are passed as we have no local bot API set up
+        test_flag = False
+        expected = (Path.cwd() / 'tests/data/telegram.jpg/').as_uri()
+        file = 'tests/data/telegram.jpg'
+
+        def make_assertion(_, data, *args, **kwargs):
+            nonlocal test_flag
+            test_flag = data.get('png_sticker') == expected and data.get('tgs_sticker') == expected
+
+        monkeypatch.setattr(bot, '_post', make_assertion)
+        bot.add_sticker_to_set(chat_id, 'name', 'emoji', png_sticker=file, tgs_sticker=file)
+        assert test_flag
+
+    def test_set_sticker_set_thumb_local_files(self, monkeypatch, bot, chat_id):
+        # For just test that the correct paths are passed as we have no local bot API set up
+        test_flag = False
+        expected = (Path.cwd() / 'tests/data/telegram.jpg/').as_uri()
+        file = 'tests/data/telegram.jpg'
+
+        def make_assertion(_, data, *args, **kwargs):
+            nonlocal test_flag
+            test_flag = data.get('thumb') == expected
+
+        monkeypatch.setattr(bot, '_post', make_assertion)
+        bot.set_sticker_set_thumb('name', chat_id, thumb=file)
+        assert test_flag
 
     def test_get_file_instance_method(self, monkeypatch, sticker):
         def test(*args, **kwargs):
@@ -415,10 +534,12 @@ class TestStickerSet:
 
 @pytest.fixture(scope='class')
 def mask_position():
-    return MaskPosition(TestMaskPosition.point,
-                        TestMaskPosition.x_shift,
-                        TestMaskPosition.y_shift,
-                        TestMaskPosition.scale)
+    return MaskPosition(
+        TestMaskPosition.point,
+        TestMaskPosition.x_shift,
+        TestMaskPosition.y_shift,
+        TestMaskPosition.scale,
+    )
 
 
 class TestMaskPosition:
@@ -432,7 +553,7 @@ class TestMaskPosition:
             'point': self.point,
             'x_shift': self.x_shift,
             'y_shift': self.y_shift,
-            'scale': self.scale
+            'scale': self.scale,
         }
         mask_position = MaskPosition.de_json(json_dict, bot)
 
@@ -449,3 +570,23 @@ class TestMaskPosition:
         assert mask_position_dict['x_shift'] == mask_position.x_shift
         assert mask_position_dict['y_shift'] == mask_position.y_shift
         assert mask_position_dict['scale'] == mask_position.scale
+
+    def test_equality(self):
+        a = MaskPosition(self.point, self.x_shift, self.y_shift, self.scale)
+        b = MaskPosition(self.point, self.x_shift, self.y_shift, self.scale)
+        c = MaskPosition(MaskPosition.FOREHEAD, self.x_shift, self.y_shift, self.scale)
+        d = MaskPosition(self.point, 0, 0, self.scale)
+        e = Audio('', '', 0, None, None)
+
+        assert a == b
+        assert hash(a) == hash(b)
+        assert a is not b
+
+        assert a != c
+        assert hash(a) != hash(c)
+
+        assert a != d
+        assert hash(a) != hash(d)
+
+        assert a != e
+        assert hash(a) != hash(e)

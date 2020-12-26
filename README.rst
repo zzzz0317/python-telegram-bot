@@ -45,6 +45,9 @@ We have a vibrant community of developers helping each other in our `Telegram gr
    :target: https://www.codacy.com/app/python-telegram-bot/python-telegram-bot?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=python-telegram-bot/python-telegram-bot&amp;utm_campaign=Badge_Grade
    :alt: Code quality
 
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+    :target: https://github.com/psf/black
+
 .. image:: https://img.shields.io/badge/Telegram-Group-blue.svg
    :target: https://telegram.me/pythontelegrambotgroup
    :alt: Telegram Group
@@ -83,7 +86,7 @@ Introduction
 
 This library provides a pure Python interface for the
 `Telegram Bot API <https://core.telegram.org/bots/api>`_.
-It's compatible with Python versions 3.5+. PTB might also work on `PyPy <http://pypy.org/>`_, though there have been a lot of issues before. Hence, PyPy is not officially supported.
+It's compatible with Python versions 3.6+. PTB might also work on `PyPy <http://pypy.org/>`_, though there have been a lot of issues before. Hence, PyPy is not officially supported.
 
 In addition to the pure API implementation, this library features a number of high-level classes to
 make the development of bots easy and straightforward. These classes are contained in the
@@ -93,7 +96,7 @@ make the development of bots easy and straightforward. These classes are contain
 Telegram API support
 ====================
 
-All types and methods of the Telegram Bot API **4.8** are supported.
+All types and methods of the Telegram Bot API **5.0** are supported.
 
 ==========
 Installing
@@ -189,7 +192,7 @@ You can get help in several ways:
 
 2. In case you are unable to join our group due to Telegram restrictions, you can use our `IRC channel <https://webchat.freenode.net/?channels=##python-telegram-bot>`_.
 
-3. Report bugs, request new features or ask questions by `creating an issue <https://github.com/python-telegram-bot/python-telegram-bot/issues/new/choose>`_.
+3. Report bugs, request new features or ask questions by `creating an issue <https://github.com/python-telegram-bot/python-telegram-bot/issues/new/choose>`_ or `a discussion <https://github.com/python-telegram-bot/python-telegram-bot/discussions/new>`_.
 
 4. Our `Wiki pages <https://github.com/python-telegram-bot/python-telegram-bot/wiki/>`_ offer a growing amount of resources.
 

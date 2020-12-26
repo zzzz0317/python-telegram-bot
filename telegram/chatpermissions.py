@@ -18,11 +18,18 @@
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 """This module contains an object that represents a Telegram ChatPermission."""
 
+from typing import Any
+
 from telegram import TelegramObject
 
 
 class ChatPermissions(TelegramObject):
     """Describes actions that a non-administrator user is allowed to take in a chat.
+
+    Objects of this class are comparable in terms of equality. Two objects of this class are
+    considered equal, if their :attr:`can_send_messages`, :attr:`can_send_media_messages`,
+    :attr:`can_send_polls`, :attr:`can_send_other_messages`, :attr:`can_add_web_page_previews`,
+    :attr:`can_change_info`, :attr:`can_invite_users` and :attr:`can_pin_message` are equal.
 
     Note:
         Though not stated explicitly in the official docs, Telegram changes not only the
@@ -71,9 +78,18 @@ class ChatPermissions(TelegramObject):
 
     """
 
-    def __init__(self, can_send_messages=None, can_send_media_messages=None, can_send_polls=None,
-                 can_send_other_messages=None, can_add_web_page_previews=None,
-                 can_change_info=None, can_invite_users=None, can_pin_messages=None, **kwargs):
+    def __init__(
+        self,
+        can_send_messages: bool = None,
+        can_send_media_messages: bool = None,
+        can_send_polls: bool = None,
+        can_send_other_messages: bool = None,
+        can_add_web_page_previews: bool = None,
+        can_change_info: bool = None,
+        can_invite_users: bool = None,
+        can_pin_messages: bool = None,
+        **_kwargs: Any,
+    ):
         # Required
         self.can_send_messages = can_send_messages
         self.can_send_media_messages = can_send_media_messages
@@ -84,9 +100,13 @@ class ChatPermissions(TelegramObject):
         self.can_invite_users = can_invite_users
         self.can_pin_messages = can_pin_messages
 
-    @classmethod
-    def de_json(cls, data, bot):
-        if not data:
-            return None
-
-        return cls(**data)
+        self._id_attrs = (
+            self.can_send_messages,
+            self.can_send_media_messages,
+            self.can_send_polls,
+            self.can_send_other_messages,
+            self.can_add_web_page_previews,
+            self.can_change_info,
+            self.can_invite_users,
+            self.can_pin_messages,
+        )

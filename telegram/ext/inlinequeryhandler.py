@@ -18,13 +18,31 @@
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 """ This module contains the InlineQueryHandler class """
 import re
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Match,
+    Optional,
+    Pattern,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from telegram import Update
+from telegram.utils.helpers import DefaultValue, DEFAULT_FALSE
 
 from .handler import Handler
 
+if TYPE_CHECKING:
+    from telegram.ext import CallbackContext, Dispatcher
 
-class InlineQueryHandler(Handler):
+RT = TypeVar('RT')
+
+
+class InlineQueryHandler(Handler[Update]):
     """
     Handler class to handle Telegram inline queries. Optionally based on a regex. Read the
     documentation of the ``re`` module for more information.
@@ -101,23 +119,26 @@ class InlineQueryHandler(Handler):
 
     """
 
-    def __init__(self,
-                 callback,
-                 pass_update_queue=False,
-                 pass_job_queue=False,
-                 pattern=None,
-                 pass_groups=False,
-                 pass_groupdict=False,
-                 pass_user_data=False,
-                 pass_chat_data=False,
-                 run_async=False):
+    def __init__(
+        self,
+        callback: Callable[[Update, 'CallbackContext'], RT],
+        pass_update_queue: bool = False,
+        pass_job_queue: bool = False,
+        pattern: Union[str, Pattern] = None,
+        pass_groups: bool = False,
+        pass_groupdict: bool = False,
+        pass_user_data: bool = False,
+        pass_chat_data: bool = False,
+        run_async: Union[bool, DefaultValue] = DEFAULT_FALSE,
+    ):
         super().__init__(
             callback,
             pass_update_queue=pass_update_queue,
             pass_job_queue=pass_job_queue,
             pass_user_data=pass_user_data,
             pass_chat_data=pass_chat_data,
-            run_async=False)
+            run_async=run_async,
+        )
 
         if isinstance(pattern, str):
             pattern = re.compile(pattern)
@@ -126,12 +147,12 @@ class InlineQueryHandler(Handler):
         self.pass_groups = pass_groups
         self.pass_groupdict = pass_groupdict
 
-    def check_update(self, update):
+    def check_update(self, update: Any) -> Optional[Union[bool, Match]]:
         """
         Determines whether an update should be passed to this handlers :attr:`callback`.
 
         Args:
-            update (:class:`telegram.Update`): Incoming telegram update.
+            update (:class:`telegram.Update` | :obj:`object`): Incoming update.
 
         Returns:
             :obj:`bool`
@@ -146,16 +167,30 @@ class InlineQueryHandler(Handler):
                         return match
             else:
                 return True
+        return None
 
-    def collect_optional_args(self, dispatcher, update=None, check_result=None):
+    def collect_optional_args(
+        self,
+        dispatcher: 'Dispatcher',
+        update: Update = None,
+        check_result: Optional[Union[bool, Match]] = None,
+    ) -> Dict[str, Any]:
         optional_args = super().collect_optional_args(dispatcher, update, check_result)
         if self.pattern:
+            check_result = cast(Match, check_result)
             if self.pass_groups:
                 optional_args['groups'] = check_result.groups()
             if self.pass_groupdict:
                 optional_args['groupdict'] = check_result.groupdict()
         return optional_args
 
-    def collect_additional_context(self, context, update, dispatcher, check_result):
+    def collect_additional_context(
+        self,
+        context: 'CallbackContext',
+        update: Update,
+        dispatcher: 'Dispatcher',
+        check_result: Optional[Union[bool, Match]],
+    ) -> None:
         if self.pattern:
+            check_result = cast(Match, check_result)
             context.matches = [check_result]

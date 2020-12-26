@@ -16,10 +16,12 @@
 #
 # You should have received a copy of the GNU Lesser Public License
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
+# pylint: disable=C0115
 """This module contains an object that represents Telegram errors."""
+from typing import Tuple
 
 
-def _lstrip_str(in_s, lstr):
+def _lstrip_str(in_s: str, lstr: str) -> str:
     """
     Args:
         in_s (:obj:`str`): in string
@@ -30,14 +32,14 @@ def _lstrip_str(in_s, lstr):
 
     """
     if in_s.startswith(lstr):
-        res = in_s[len(lstr):]
+        res = in_s[len(lstr) :]
     else:
         res = in_s
     return res
 
 
 class TelegramError(Exception):
-    def __init__(self, message):
+    def __init__(self, message: str):
         super().__init__()
 
         msg = _lstrip_str(message, 'Error: ')
@@ -48,10 +50,10 @@ class TelegramError(Exception):
             msg = msg.capitalize()
         self.message = msg
 
-    def __str__(self):
-        return '%s' % (self.message)
+    def __str__(self) -> str:
+        return '%s' % self.message
 
-    def __reduce__(self):
+    def __reduce__(self) -> Tuple[type, Tuple[str]]:
         return self.__class__, (self.message,)
 
 
@@ -60,10 +62,10 @@ class Unauthorized(TelegramError):
 
 
 class InvalidToken(TelegramError):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__('Invalid token')
 
-    def __reduce__(self):
+    def __reduce__(self) -> Tuple[type, Tuple]:  # type: ignore[override]
         return self.__class__, ()
 
 
@@ -76,10 +78,10 @@ class BadRequest(NetworkError):
 
 
 class TimedOut(NetworkError):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__('Timed out')
 
-    def __reduce__(self):
+    def __reduce__(self) -> Tuple[type, Tuple]:  # type: ignore[override]
         return self.__class__, ()
 
 
@@ -90,11 +92,11 @@ class ChatMigrated(TelegramError):
 
     """
 
-    def __init__(self, new_chat_id):
-        super().__init__('Group migrated to supergroup. New chat id: {}'.format(new_chat_id))
+    def __init__(self, new_chat_id: int):
+        super().__init__(f'Group migrated to supergroup. New chat id: {new_chat_id}')
         self.new_chat_id = new_chat_id
 
-    def __reduce__(self):
+    def __reduce__(self) -> Tuple[type, Tuple[int]]:  # type: ignore[override]
         return self.__class__, (self.new_chat_id,)
 
 
@@ -105,25 +107,22 @@ class RetryAfter(TelegramError):
 
     """
 
-    def __init__(self, retry_after):
-        super().__init__('Flood control exceeded. Retry in {} seconds'.format(float(retry_after)))
+    def __init__(self, retry_after: int):
+        super().__init__(f'Flood control exceeded. Retry in {float(retry_after)} seconds')
         self.retry_after = float(retry_after)
 
-    def __reduce__(self):
+    def __reduce__(self) -> Tuple[type, Tuple[float]]:  # type: ignore[override]
         return self.__class__, (self.retry_after,)
 
 
 class Conflict(TelegramError):
     """
-        Raised when a long poll or webhook conflicts with another one.
+    Raised when a long poll or webhook conflicts with another one.
 
-        Args:
-            msg (:obj:`str`): The message from telegrams server.
+    Args:
+        msg (:obj:`str`): The message from telegrams server.
 
     """
 
-    def __init__(self, msg):
-        super().__init__(msg)
-
-    def __reduce__(self):
+    def __reduce__(self) -> Tuple[type, Tuple[str]]:
         return self.__class__, (self.message,)

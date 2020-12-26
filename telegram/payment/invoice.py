@@ -18,11 +18,17 @@
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 """This module contains an object that represents a Telegram Invoice."""
 
+from typing import Any
+
 from telegram import TelegramObject
 
 
 class Invoice(TelegramObject):
     """This object contains basic information about an invoice.
+
+    Objects of this class are comparable in terms of equality. Two objects of this class are
+    considered equal, if their :attr:`title`, :attr:`description`, :attr:`start_parameter`,
+    :attr:`currency` and :attr:`total_amount` are equal.
 
     Attributes:
         title (:obj:`str`): Product name.
@@ -47,16 +53,25 @@ class Invoice(TelegramObject):
 
     """
 
-    def __init__(self, title, description, start_parameter, currency, total_amount, **kwargs):
+    def __init__(
+        self,
+        title: str,
+        description: str,
+        start_parameter: str,
+        currency: str,
+        total_amount: int,
+        **_kwargs: Any,
+    ):
         self.title = title
         self.description = description
         self.start_parameter = start_parameter
         self.currency = currency
         self.total_amount = total_amount
 
-    @classmethod
-    def de_json(cls, data, bot):
-        if not data:
-            return None
-
-        return cls(**data)
+        self._id_attrs = (
+            self.title,
+            self.description,
+            self.start_parameter,
+            self.currency,
+            self.total_amount,
+        )

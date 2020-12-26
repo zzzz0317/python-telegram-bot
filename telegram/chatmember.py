@@ -17,18 +17,29 @@
 # You should have received a copy of the GNU Lesser Public License
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 """This module contains an object that represents a Telegram ChatMember."""
+import datetime
+from typing import TYPE_CHECKING, Any, Optional, ClassVar
 
-from telegram import User, TelegramObject
-from telegram.utils.helpers import to_timestamp, from_timestamp
+from telegram import TelegramObject, User, constants
+from telegram.utils.helpers import from_timestamp, to_timestamp
+from telegram.utils.types import JSONDict
+
+if TYPE_CHECKING:
+    from telegram import Bot
 
 
 class ChatMember(TelegramObject):
     """This object contains information about one member of a chat.
 
+    Objects of this class are comparable in terms of equality. Two objects of this class are
+    considered equal, if their :attr:`user` and :attr:`status` are equal.
+
     Attributes:
         user (:class:`telegram.User`): Information about the user.
         status (:obj:`str`): The member's status in the chat.
         custom_title (:obj:`str`): Optional. Custom title for owner and administrators.
+        is_anonymous (:obj:`bool`): Optional. :obj:`True`, if the user's presence in the chat is
+            hidden.
         until_date (:class:`datetime.datetime`): Optional. Date when restrictions will be lifted
             for this user.
         can_be_edited (:obj:`bool`): Optional. If the bot is allowed to edit administrator
@@ -65,6 +76,8 @@ class ChatMember(TelegramObject):
             'member', 'restricted', 'left' or 'kicked'.
         custom_title (:obj:`str`, optional): Owner and administrators only.
             Custom title for this user.
+        is_anonymous (:obj:`bool`, optional): Owner and administrators only. :obj:`True`, if the
+            user's presence in the chat is hidden.
         until_date (:class:`datetime.datetime`, optional): Restricted and kicked only. Date when
             restrictions will be lifted for this user.
         can_be_edited (:obj:`bool`, optional): Administrators only. :obj:`True`, if the bot is
@@ -101,30 +114,51 @@ class ChatMember(TelegramObject):
             may add web page previews to his messages.
 
     """
-    ADMINISTRATOR = 'administrator'
-    """:obj:`str`: 'administrator'"""
-    CREATOR = 'creator'
-    """:obj:`str`: 'creator'"""
-    KICKED = 'kicked'
-    """:obj:`str`: 'kicked'"""
-    LEFT = 'left'
-    """:obj:`str`: 'left'"""
-    MEMBER = 'member'
-    """:obj:`str`: 'member'"""
-    RESTRICTED = 'restricted'
-    """:obj:`str`: 'restricted'"""
 
-    def __init__(self, user, status, until_date=None, can_be_edited=None,
-                 can_change_info=None, can_post_messages=None, can_edit_messages=None,
-                 can_delete_messages=None, can_invite_users=None,
-                 can_restrict_members=None, can_pin_messages=None,
-                 can_promote_members=None, can_send_messages=None,
-                 can_send_media_messages=None, can_send_polls=None, can_send_other_messages=None,
-                 can_add_web_page_previews=None, is_member=None, custom_title=None, **kwargs):
+    ADMINISTRATOR: ClassVar[str] = constants.CHATMEMBER_ADMINISTRATOR
+    """:const:`telegram.constants.CHATMEMBER_ADMINISTRATOR`"""
+    CREATOR: ClassVar[str] = constants.CHATMEMBER_CREATOR
+    """:const:`telegram.constants.CHATMEMBER_CREATOR`"""
+    KICKED: ClassVar[str] = constants.CHATMEMBER_KICKED
+    """:const:`telegram.constants.CHATMEMBER_KICKED`"""
+    LEFT: ClassVar[str] = constants.CHATMEMBER_LEFT
+    """:const:`telegram.constants.CHATMEMBER_LEFT`"""
+    MEMBER: ClassVar[str] = constants.CHATMEMBER_MEMBER
+    """:const:`telegram.constants.CHATMEMBER_MEMBER`"""
+    RESTRICTED: ClassVar[str] = constants.CHATMEMBER_RESTRICTED
+    """:const:`telegram.constants.CHATMEMBER_RESTRICTED`"""
+
+    def __init__(
+        self,
+        user: User,
+        status: str,
+        until_date: datetime.datetime = None,
+        can_be_edited: bool = None,
+        can_change_info: bool = None,
+        can_post_messages: bool = None,
+        can_edit_messages: bool = None,
+        can_delete_messages: bool = None,
+        can_invite_users: bool = None,
+        can_restrict_members: bool = None,
+        can_pin_messages: bool = None,
+        can_promote_members: bool = None,
+        can_send_messages: bool = None,
+        can_send_media_messages: bool = None,
+        can_send_polls: bool = None,
+        can_send_other_messages: bool = None,
+        can_add_web_page_previews: bool = None,
+        is_member: bool = None,
+        custom_title: str = None,
+        is_anonymous: bool = None,
+        **_kwargs: Any,
+    ):
         # Required
         self.user = user
         self.status = status
+
+        # Optionals
         self.custom_title = custom_title
+        self.is_anonymous = is_anonymous
         self.until_date = until_date
         self.can_be_edited = can_be_edited
         self.can_change_info = can_change_info
@@ -145,18 +179,18 @@ class ChatMember(TelegramObject):
         self._id_attrs = (self.user, self.status)
 
     @classmethod
-    def de_json(cls, data, bot):
+    def de_json(cls, data: Optional[JSONDict], bot: 'Bot') -> Optional['ChatMember']:
+        data = cls.parse_data(data)
+
         if not data:
             return None
-
-        data = super().de_json(data, bot)
 
         data['user'] = User.de_json(data.get('user'), bot)
         data['until_date'] = from_timestamp(data.get('until_date', None))
 
         return cls(**data)
 
-    def to_dict(self):
+    def to_dict(self) -> JSONDict:
         data = super().to_dict()
 
         data['until_date'] = to_timestamp(self.until_date)

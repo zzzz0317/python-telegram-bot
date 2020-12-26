@@ -18,11 +18,16 @@
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 """This module contains an object that represents a Telegram LabeledPrice."""
 
+from typing import Any
+
 from telegram import TelegramObject
 
 
 class LabeledPrice(TelegramObject):
     """This object represents a portion of the price for goods or services.
+
+    Objects of this class are comparable in terms of equality. Two objects of this class are
+    considered equal, if their :attr:`label` and :attr:`amount` are equal.
 
     Attributes:
         label (:obj:`str`): Portion label.
@@ -40,6 +45,8 @@ class LabeledPrice(TelegramObject):
 
     """
 
-    def __init__(self, label, amount, **kwargs):
+    def __init__(self, label: str, amount: int, **_kwargs: Any):
         self.label = label
         self.amount = amount
+
+        self._id_attrs = (self.label, self.amount)

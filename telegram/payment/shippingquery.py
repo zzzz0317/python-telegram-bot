@@ -18,11 +18,20 @@
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 """This module contains an object that represents a Telegram ShippingQuery."""
 
-from telegram import TelegramObject, User, ShippingAddress
+from typing import TYPE_CHECKING, Any, Optional
+
+from telegram import ShippingAddress, TelegramObject, User
+from telegram.utils.types import JSONDict
+
+if TYPE_CHECKING:
+    from telegram import Bot
 
 
 class ShippingQuery(TelegramObject):
     """This object contains information about an incoming shipping query.
+
+    Objects of this class are comparable in terms of equality. Two objects of this class are
+    considered equal, if their :attr:`id` is equal.
 
     Note:
         * In Python `from` is a reserved word, use `from_user` instead.
@@ -44,8 +53,16 @@ class ShippingQuery(TelegramObject):
 
     """
 
-    def __init__(self, id, from_user, invoice_payload, shipping_address, bot=None, **kwargs):
-        self.id = id
+    def __init__(
+        self,
+        id: str,  # pylint: disable=W0622
+        from_user: User,
+        invoice_payload: str,
+        shipping_address: ShippingAddress,
+        bot: 'Bot' = None,
+        **_kwargs: Any,
+    ):
+        self.id = id  # pylint: disable=C0103
         self.from_user = from_user
         self.invoice_payload = invoice_payload
         self.shipping_address = shipping_address
@@ -55,18 +72,18 @@ class ShippingQuery(TelegramObject):
         self._id_attrs = (self.id,)
 
     @classmethod
-    def de_json(cls, data, bot):
+    def de_json(cls, data: Optional[JSONDict], bot: 'Bot') -> Optional['ShippingQuery']:
+        data = cls.parse_data(data)
+
         if not data:
             return None
-
-        data = super().de_json(data, bot)
 
         data['from_user'] = User.de_json(data.pop('from'), bot)
         data['shipping_address'] = ShippingAddress.de_json(data.get('shipping_address'), bot)
 
         return cls(bot=bot, **data)
 
-    def answer(self, *args, **kwargs):
+    def answer(self, *args: Any, **kwargs: Any) -> bool:
         """Shortcut for::
 
             bot.answer_shipping_query(update.shipping_query.id, *args, **kwargs)

@@ -33,17 +33,24 @@ def json_dict():
         'language_code': TestUser.language_code,
         'can_join_groups': TestUser.can_join_groups,
         'can_read_all_group_messages': TestUser.can_read_all_group_messages,
-        'supports_inline_queries': TestUser.supports_inline_queries
+        'supports_inline_queries': TestUser.supports_inline_queries,
     }
 
 
 @pytest.fixture(scope='function')
 def user(bot):
-    return User(id=TestUser.id_, first_name=TestUser.first_name, is_bot=TestUser.is_bot,
-                last_name=TestUser.last_name, username=TestUser.username,
-                language_code=TestUser.language_code, can_join_groups=TestUser.can_join_groups,
-                can_read_all_group_messages=TestUser.can_read_all_group_messages,
-                supports_inline_queries=TestUser.supports_inline_queries, bot=bot)
+    return User(
+        id=TestUser.id_,
+        first_name=TestUser.first_name,
+        is_bot=TestUser.is_bot,
+        last_name=TestUser.last_name,
+        username=TestUser.username,
+        language_code=TestUser.language_code,
+        can_join_groups=TestUser.can_join_groups,
+        can_read_all_group_messages=TestUser.can_read_all_group_messages,
+        supports_inline_queries=TestUser.supports_inline_queries,
+        bot=bot,
+    )
 
 
 class TestUser:
@@ -116,7 +123,7 @@ class TestUser:
         assert user.full_name == u'first\u2022name'
 
     def test_link(self, user):
-        assert user.link == 'https://t.me/{}'.format(user.username)
+        assert user.link == f'https://t.me/{user.username}'
         user.username = None
         assert user.link is None
 
@@ -126,6 +133,27 @@ class TestUser:
 
         monkeypatch.setattr(user.bot, 'get_user_profile_photos', test)
         assert user.get_profile_photos()
+
+    def test_pin_message(self, monkeypatch, user):
+        def make_assertion(*args, **kwargs):
+            return args[0] == user.id
+
+        monkeypatch.setattr(user.bot, 'pin_chat_message', make_assertion)
+        assert user.pin_message()
+
+    def test_unpin_message(self, monkeypatch, user):
+        def make_assertion(*args, **kwargs):
+            return args[0] == user.id
+
+        monkeypatch.setattr(user.bot, 'unpin_chat_message', make_assertion)
+        assert user.unpin_message()
+
+    def test_unpin_all_messages(self, monkeypatch, user):
+        def make_assertion(*args, **kwargs):
+            return args[0] == user.id
+
+        monkeypatch.setattr(user.bot, 'unpin_all_chat_messages', make_assertion)
+        assert user.unpin_all_messages()
 
     def test_instance_method_send_message(self, monkeypatch, user):
         def test(*args, **kwargs):
@@ -253,20 +281,40 @@ class TestUser:
         monkeypatch.setattr(user.bot, 'send_poll', test)
         assert user.send_poll('test_poll')
 
+    def test_instance_method_send_copy(self, monkeypatch, user):
+        def test(*args, **kwargs):
+            assert args[0] == 'test_copy'
+            assert kwargs['chat_id'] == user.id
+            return args
+
+        monkeypatch.setattr(user.bot, 'copy_message', test)
+        assert user.send_copy('test_copy')
+
+    def test_instance_method_copy_message(self, monkeypatch, user):
+        def test(*args, **kwargs):
+            assert args[0] == 'test_copy'
+            assert kwargs['from_chat_id'] == user.id
+            return args
+
+        monkeypatch.setattr(user.bot, 'copy_message', test)
+        assert user.copy_message('test_copy')
+
     def test_mention_html(self, user):
         expected = u'<a href="tg://user?id={}">{}</a>'
 
         assert user.mention_html() == expected.format(user.id, user.full_name)
-        assert user.mention_html('the<b>name\u2022') == expected.format(user.id,
-                                                                        'the&lt;b&gt;name\u2022')
+        assert user.mention_html('the<b>name\u2022') == expected.format(
+            user.id, 'the&lt;b&gt;name\u2022'
+        )
         assert user.mention_html(user.username) == expected.format(user.id, user.username)
 
     def test_mention_markdown(self, user):
         expected = u'[{}](tg://user?id={})'
 
         assert user.mention_markdown() == expected.format(user.full_name, user.id)
-        assert user.mention_markdown('the_name*\u2022') == expected.format('the\\_name\\*\u2022',
-                                                                           user.id)
+        assert user.mention_markdown('the_name*\u2022') == expected.format(
+            'the\\_name\\*\u2022', user.id
+        )
         assert user.mention_markdown(user.username) == expected.format(user.username, user.id)
 
     def test_mention_markdown_v2(self, user):
@@ -275,10 +323,12 @@ class TestUser:
 
         expected = u'[{}](tg://user?id={})'
 
-        assert user.mention_markdown_v2() == expected.format(escape_markdown(user.full_name,
-                                                                             version=2), user.id)
+        assert user.mention_markdown_v2() == expected.format(
+            escape_markdown(user.full_name, version=2), user.id
+        )
         assert user.mention_markdown_v2('the{name>\u2022') == expected.format(
-            'the\\{name\\>\u2022', user.id)
+            'the\\{name\\>\u2022', user.id
+        )
         assert user.mention_markdown_v2(user.username) == expected.format(user.username, user.id)
 
     def test_equality(self):

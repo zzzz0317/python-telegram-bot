@@ -20,13 +20,14 @@
 """This module contains an object that represents a Telegram InputFile."""
 
 import imghdr
+import logging
 import mimetypes
 import os
+from typing import IO, Optional, Tuple, Union
 from uuid import uuid4
 
-from telegram import TelegramError
-
 DEFAULT_MIME_TYPE = 'application/octet-stream'
+logger = logging.getLogger(__name__)
 
 
 class InputFile:
@@ -38,7 +39,8 @@ class InputFile:
         attach (:obj:`str`): Optional. Attach id for sending multiple files.
 
     Args:
-        obj (:obj:`File handler`): An open file descriptor.
+        obj (:obj:`File handler` | :obj:`bytes`): An open file descriptor or the files content as
+            bytes.
         filename (:obj:`str`, optional): Filename for this InputFile.
         attach (:obj:`bool`, optional): Whether this should be send as one file or is part of a
             collection of files.
@@ -48,52 +50,62 @@ class InputFile:
 
     """
 
-    def __init__(self, obj, filename=None, attach=None):
+    def __init__(self, obj: Union[IO, bytes], filename: str = None, attach: bool = None):
         self.filename = None
-        self.input_file_content = obj.read()
+        if isinstance(obj, bytes):
+            self.input_file_content = obj
+        else:
+            self.input_file_content = obj.read()
         self.attach = 'attached' + uuid4().hex if attach else None
 
         if filename:
             self.filename = filename
-        elif (hasattr(obj, 'name') and not isinstance(obj.name, int)):
-            self.filename = os.path.basename(obj.name)
+        elif hasattr(obj, 'name') and not isinstance(obj.name, int):  # type: ignore[union-attr]
+            self.filename = os.path.basename(obj.name)  # type: ignore[union-attr]
 
-        try:
-            self.mimetype = self.is_image(self.input_file_content)
-        except TelegramError:
-            if self.filename:
-                self.mimetype = mimetypes.guess_type(
-                    self.filename)[0] or DEFAULT_MIME_TYPE
-            else:
-                self.mimetype = DEFAULT_MIME_TYPE
+        image_mime_type = self.is_image(self.input_file_content)
+        if image_mime_type:
+            self.mimetype = image_mime_type
+        elif self.filename:
+            self.mimetype = mimetypes.guess_type(self.filename)[0] or DEFAULT_MIME_TYPE
+        else:
+            self.mimetype = DEFAULT_MIME_TYPE
+
         if not self.filename:
             self.filename = self.mimetype.replace('/', '.')
 
     @property
-    def field_tuple(self):
+    def field_tuple(self) -> Tuple[str, bytes, str]:
         return self.filename, self.input_file_content, self.mimetype
 
     @staticmethod
-    def is_image(stream):
+    def is_image(stream: bytes) -> Optional[str]:
         """Check if the content file is an image by analyzing its headers.
 
         Args:
-            stream (:obj:`str`): A str representing the content of a file.
+            stream (:obj:`bytes`): A byte stream representing the content of a file.
 
         Returns:
-            :obj:`str`: The str mime-type of an image.
+            :obj:`str` | :obj:`None`: The mime-type of an image, if the input is an image, or
+            :obj:`None` else.
 
         """
-        image = imghdr.what(None, stream)
-        if image:
-            return 'image/%s' % image
-
-        raise TelegramError('Could not parse file content')
+        try:
+            image = imghdr.what(None, stream)
+            if image:
+                return f'image/{image}'
+            return None
+        except Exception:
+            logger.debug(
+                "Could not parse file content. Assuming that file is not an image.", exc_info=True
+            )
+            return None
 
     @staticmethod
-    def is_file(obj):
+    def is_file(obj: object) -> bool:
         return hasattr(obj, 'read')
 
-    def to_dict(self):
+    def to_dict(self) -> Optional[str]:
         if self.attach:
             return 'attach://' + self.attach
+        return None
